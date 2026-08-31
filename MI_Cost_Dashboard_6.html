@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MI Campus Cost Dashboard | Stelic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --mast:#12181F; --mast-2:#0E1319; --mast-line:#2A333D; --mast-txt:#E7ECF1; --mast-muted:#9AA6B2; --mast-faint:#6C7883;
+  --page:#F5F7F9; --panel:#FFFFFF; --line:#DFE4E9; --line-soft:#EDF0F3;
+  --txt:#12181F; --muted:#4A5763; --faint:#7B8794;
+  --blue:#175D8C; --blue-2:#5F86A8; --tint:#E8F0F6; --green:#0E7C5A; --amber:#B57A0B; --red:#AF2318; --deep:#8F1D14; --orange:#C2601A;
+  --grey:#8794A1;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--page); color:var(--txt);
+  font-family:"IBM Plex Sans",system-ui,sans-serif; font-size:13px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1}
+.cnd{font-family:"IBM Plex Sans Condensed",sans-serif}
+.wrap{padding:20px clamp(12px,2.4vw,26px) 40px}
+
+/* ---------- masthead ---------- */
+.mast{
+  position:sticky; top:0; z-index:40; min-height:58px; display:flex; align-items:center; justify-content:space-between;
+  gap:18px; padding:8px clamp(12px,2.4vw,26px); background:var(--mast); border-bottom:1px solid var(--mast-line); flex-wrap:wrap;
+}
+.mark{display:flex; align-items:center; gap:14px; min-width:0}
+.logo{font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:22px; letter-spacing:.04em; color:#3E9BD1; line-height:1}
+.tag{font-family:"IBM Plex Sans Condensed"; font-weight:600; font-size:7.5px; letter-spacing:.34em; text-transform:uppercase; color:var(--mast-faint); margin-top:3px}
+.proj{border-left:1px solid var(--mast-line); padding-left:14px; min-width:0}
+.proj h1{margin:0; font-family:"IBM Plex Sans Condensed"; font-weight:600; font-size:14px; color:var(--mast-txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.proj p{margin:2px 0 0; font-size:10.5px; color:var(--mast-muted); overflow:hidden; text-overflow:ellipsis}
+.proj p b{color:#E7ECF1; font-weight:600}
+.meta{display:flex; align-items:center; gap:22px; flex-wrap:wrap}
+.mcol{text-align:right}
+.mcol .k{font-family:"IBM Plex Sans Condensed"; font-weight:600; font-size:8px; letter-spacing:.16em; text-transform:uppercase; color:var(--mast-faint)}
+.mcol .v{font-family:"IBM Plex Mono"; font-size:13px; margin-top:2px; color:var(--mast-txt)}
+.mcol .v.crit{color:#E06A63}
+.seg{display:flex; border:1px solid var(--mast-line); border-radius:3px; overflow:hidden}
+.seg button{
+  font-family:"IBM Plex Sans Condensed"; font-weight:600; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
+  background:transparent; color:var(--mast-muted); border:0; padding:6px 11px; cursor:pointer;
+}
+.seg button[aria-pressed="true"]{background:#1D2731; color:#E7ECF1}
+.btn{
+  font-family:"IBM Plex Sans Condensed"; font-weight:600; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--mast-muted); background:transparent; border:1px solid var(--mast-line); border-radius:3px; padding:6px 11px; cursor:pointer;
+}
+.btn:hover{color:#fff; border-color:#4A5763}
+.rsel{display:flex; flex-direction:column; gap:2px; min-width:0; max-width:280px}
+.rsel label{font-family:"IBM Plex Sans Condensed"; font-weight:600; font-size:8px; letter-spacing:.16em; text-transform:uppercase; color:var(--mast-faint)}
+.rsel select{
+  font-family:"IBM Plex Sans"; font-size:12px; color:var(--mast-txt); background:#1D2731;
+  border:1px solid var(--mast-line); border-radius:3px; padding:5px 8px; max-width:280px; cursor:pointer;
+}
+.rsel select:focus{outline:none; border-color:var(--blue)}
+.btn:focus-visible,.seg button:focus-visible,.chip:focus-visible,th:focus-visible,.tab:focus-visible{outline:2px solid var(--blue); outline-offset:2px}
+
+/* ---------- scope rail ---------- */
+.scope{
+  position:sticky; top:58px; z-index:38; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  padding:9px clamp(12px,2.4vw,26px); background:var(--panel); border-bottom:1px solid var(--line);
+}
+.crumbs{display:flex; align-items:center; gap:7px; flex-wrap:wrap}
+.crumb{display:flex; flex-direction:column; gap:1px; border:1px solid var(--line); border-radius:3px; padding:4px 11px; background:var(--panel); min-width:0}
+.crumb .ck{font-family:"IBM Plex Sans Condensed"; font-weight:600; font-size:7.5px; letter-spacing:.15em; text-transform:uppercase; color:var(--faint)}
+.crumb .cv{font-size:11.5px; font-weight:600; color:var(--txt); margin-top:1px}
+.crumb.active{background:var(--blue); border-color:var(--blue)}
+.crumb.active .ck{color:rgba(255,255,255,.72)}
+.crumb.active .cv{color:#fff}
+.sep{color:var(--faint); font-size:11px}
+.legend{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+.lg{display:inline-flex; align-items:center; gap:6px; font-family:"IBM Plex Sans Condensed"; font-weight:600; font-size:9px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted)}
+.lg i{width:8px; height:8px; border-radius:50%}
+.lg i.b{background:var(--blue)} .lg i.a{background:var(--amber)} .lg i.g{background:var(--grey)} .lg i.r{background:var(--red)}
+
+/* ---------- nav ---------- */
+nav.tabs{display:flex; gap:2px; padding:0 clamp(12px,2.4vw,26px); background:var(--panel); border-bottom:1px solid var(--line); overflow-x:auto}
+.tab{
+  flex:0 0 auto; text-align:left; background:transparent; border:0; border-bottom:2px solid transparent;
+  padding:11px 16px 10px; cursor:pointer; display:flex; flex-direction:column; gap:1px; min-width:132px;
+}
+.tab b{font-family:"IBM Plex Sans Condensed"; font-weight:600; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted)}
+.tab em{font-style:normal; font-size:9.5px; color:var(--faint)}
+.tab:hover b{color:var(--txt)}
+.tab[aria-selected="true"]{border-bottom-color:var(--blue)}
+.tab[aria-selected="true"] b{color:var(--blue)}
+
+/* ---------- upload ---------- */
+.loader{max-width:720px; margin:8vh auto; text-align:center}
+.loader .eyebrow{font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); margin-bottom:12px}
+.loader h1{font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:32px; line-height:1.15; margin:0 0 10px; letter-spacing:.01em}
+.loader p{color:var(--muted); margin:0 auto 26px; max-width:520px; font-size:13px}
+.drop{background:var(--panel); border:1px dashed #C3C9CF; border-radius:14px; padding:44px 28px; cursor:pointer; transition:border-color .15s, background .15s}
+.drop:hover,.drop.over{border-color:var(--blue); background:var(--tint)}
+.drop .icon{
+  width:46px; height:46px; margin:0 auto 14px; border:1px solid var(--line); border-radius:8px; background:var(--tint);
+  display:flex; align-items:center; justify-content:center; color:var(--blue);
+  font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:13px; letter-spacing:.1em;
+}
+.drop b{display:block; font-size:15px; margin-bottom:4px}
+.drop small{color:var(--faint)}
+.tabs-hint{margin-top:22px; font-size:10.5px; color:var(--faint); letter-spacing:.03em}
+.err{margin-top:16px; color:var(--red); font-size:12px; display:none}
+
+/* ---------- kpi strip ---------- */
+.kpis{display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:16px}
+.kpi{position:relative; overflow:hidden; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:13px 14px 12px; --rail:var(--blue)}
+.kpi::before{content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--rail)}
+.kpi.risk{--rail:var(--red)} .kpi.ok{--rail:var(--green)} .kpi.copper{--rail:var(--amber)} .kpi.cyan{--rail:var(--blue)}
+.kpi-label{font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+.kpi-val{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:26px; margin-top:9px; line-height:1; letter-spacing:-.01em}
+.kpi-sub{font-size:11px; color:var(--faint); margin-top:7px}
+.kpi.risk .kpi-val{color:var(--red)} .kpi.ok .kpi-val{color:var(--green)}
+.kpi.cyan .kpi-val{color:var(--blue)} .kpi.copper .kpi-val{color:var(--amber)}
+
+/* ---------- cards ---------- */
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:14px; margin-bottom:16px}
+.panel-h{display:flex; align-items:baseline; gap:12px; padding:15px 18px 8px; flex-wrap:wrap}
+.panel-h h2{margin:0; font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:13px; letter-spacing:.02em}
+.panel-h .note{font-size:10.5px; color:var(--faint)}
+.panel-h .spacer{flex:1}
+.panel-b{padding:6px 18px 16px}
+.grid2{display:grid; grid-template-columns:1.55fr 1fr; gap:16px; align-items:start}
+.grid2>.panel{margin-bottom:0}
+
+/* ---------- meters ---------- */
+.meter{padding:11px 0 13px; border-bottom:1px solid var(--line-soft)}
+.meter:last-child{border-bottom:0; padding-bottom:2px}
+.meter-h{display:flex; align-items:baseline; gap:12px; margin-bottom:8px; flex-wrap:wrap}
+.meter-h .nm{font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase}
+.meter-h .bd{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted)}
+.meter-h .spacer{flex:1}
+.track{position:relative; height:14px; background:var(--line-soft); border-radius:7px; overflow:hidden}
+.track .tick{position:absolute; top:0; bottom:0; width:1px; background:rgba(18,24,31,.055)}
+.seg-commit{position:absolute; top:0; bottom:0; left:0; background:#E3B85F; border-radius:7px}
+.seg-actual{position:absolute; top:0; bottom:0; left:0; background:var(--blue); border-radius:7px}
+.exposure{position:absolute; top:0; bottom:0; background:repeating-linear-gradient(115deg, rgba(175,35,24,.55) 0 5px, rgba(175,35,24,.22) 5px 10px)}
+.meter-legend{display:flex; gap:16px; margin-top:12px; padding-top:11px; border-top:1px solid var(--line-soft); font-size:11px; color:var(--muted); flex-wrap:wrap}
+.meter-legend span{display:flex; align-items:center; gap:7px}
+.sw{width:14px; height:8px; border-radius:3px; flex:none}
+.sw.a{background:var(--blue)} .sw.c{background:#E3B85F}
+.sw.b{background:var(--line-soft); border:1px solid var(--line)}
+.sw.e{background:repeating-linear-gradient(115deg, rgba(175,35,24,.55) 0 4px, rgba(175,35,24,.22) 4px 8px)}
+
+/* ---------- tables ---------- */
+.tblwrap{overflow:auto; max-height:600px}
+table{width:100%; border-collapse:collapse; font-size:12px}
+thead th{
+  position:sticky; top:0; z-index:2; background:var(--panel);
+  font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:9.5px; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--faint); text-align:left; padding:0 10px 9px; border-bottom:1px solid var(--line); cursor:pointer; white-space:nowrap;
+}
+thead th.r{text-align:right}
+thead th:hover{color:var(--txt)}
+thead th .ar{color:var(--blue); font-size:8px; margin-left:4px}
+tbody td{padding:9px 10px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+tbody td.r{text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; white-space:nowrap}
+tbody tr:hover{background:var(--page)}
+tbody tr.rollup{background:#FAFBFC}
+tbody tr.rollup td{font-weight:600}
+tfoot td{padding:11px 10px; border-top:1px solid var(--line); font-weight:600; background:var(--panel)}
+tfoot td.r{text-align:right; font-family:"IBM Plex Mono",monospace}
+tfoot td:first-child{font-family:"IBM Plex Sans Condensed"; letter-spacing:.04em; text-transform:uppercase; font-size:11px}
+.bar{position:relative; height:6px; background:var(--line-soft); border-radius:3px; min-width:60px; margin-top:5px; max-width:220px}
+.bar i{position:absolute; left:0; top:0; bottom:0; border-radius:3px; display:block}
+/* ---------- risk & actions ---------- */
+.rk-read{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:16px}
+.rk-read .eye{font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); margin-bottom:6px}
+.rk-read p{margin:0; font-size:13.5px; line-height:1.6; color:var(--txt)}
+.rk-read .tally{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap}
+.rk-pill{display:inline-flex; align-items:center; gap:6px; font-family:"IBM Plex Sans Condensed"; font-weight:600; font-size:10px; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--line); border-radius:20px; padding:4px 11px; color:var(--muted)}
+.rk-pill b{font-family:"IBM Plex Mono"; font-size:12px; color:var(--txt)}
+.rk-pill i{width:8px; height:8px; border-radius:50%}
+.rk-list{display:flex; flex-direction:column; gap:10px}
+.rk{position:relative; overflow:hidden; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px 14px 18px; --rk:var(--blue)}
+.rk::before{content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--rk)}
+.rk.high{--rk:var(--red)} .rk.med{--rk:var(--amber)} .rk.low{--rk:var(--blue)}
+.rk-top{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
+.rk-sev{font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#fff; background:var(--rk); border-radius:3px; padding:3px 7px}
+.rk-title{font-weight:600; font-size:14px; color:var(--txt)}
+.rk-val{margin-left:auto; font-family:"IBM Plex Mono"; font-size:15px; color:var(--txt)}
+.rk-detail{margin:8px 0 0; font-size:12.5px; line-height:1.55; color:var(--muted)}
+.rk-act{margin:9px 0 0; font-size:12.5px; line-height:1.55; color:var(--txt); padding-left:12px; border-left:2px solid var(--line)}
+.rk-act b{font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); display:block; margin-bottom:2px}
+.rk-note{margin-top:14px; font-size:11px; color:var(--faint); line-height:1.5}
+/* ---------- per-tab summary band ---------- */
+.sumband{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--blue); border-radius:12px; padding:14px 16px; margin-bottom:16px}
+.sumband .eye{font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); margin-bottom:5px}
+.sumband p{margin:0; font-size:13px; line-height:1.6; color:var(--txt)}
+.sumband .sb-recs{margin-top:10px; background:var(--tint); border-radius:8px; padding:10px 12px}
+.sumband .sb-recs b{font-family:"IBM Plex Sans Condensed"; font-weight:700; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--blue); display:block; margin-bottom:6px}
+.sumband .sb-recs ul{margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px}
+.sumband .sb-recs li{position:relative; padding-left:16px; font-size:12.5px; line-height:1.5; color:var(--txt)}
+.sumband .sb-recs li::before{content:''; position:absolute; left:2px; top:6px; width:5px; height:5px; border-radius:50%; background:var(--blue)}
+.pill{display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:10.5px; padding:2px 7px; border-radius:6px; font-weight:600}
+.pill.pending{color:var(--red); background:rgba(175,35,24,.10)}
+.pill.approved{color:var(--green); background:rgba(14,124,90,.10)}
+.pill.closed{color:var(--faint); background:rgba(123,135,148,.12)}
+.muted{color:var(--faint)} .risk{color:var(--red)} .ok{color:var(--green)} .cy{color:var(--blue)} .cu{color:var(--amber)}
+.small{font-size:10.5px; color:var(--faint)}
+
+/* ---------- controls ---------- */
+.chips{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+.chip{
+  font-family:"IBM Plex Sans Condensed"; font-weight:600; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  background:var(--panel); border:1px solid var(--line); color:var(--muted); border-radius:3px; padding:6px 12px; cursor:pointer;
+}
+.chip:hover{color:var(--txt)}
+.chip[aria-pressed="true"]{background:var(--blue); border-color:var(--blue); color:#fff}
+input[type=search],select{
+  background:var(--panel); border:1px solid var(--line); color:var(--txt); border-radius:3px;
+  padding:6px 10px; font-family:"IBM Plex Sans",sans-serif; font-size:12px; min-width:190px;
+}
+input[type=search]:focus,select:focus{outline:none; border-color:var(--blue)}
+.chartbox{position:relative; height:330px}
+.chartbox.tall{height:430px}
+
+/* ---------- footer ---------- */
+.foot{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-top:20px; padding-top:14px; border-top:1px solid var(--line); font-size:10.5px; color:var(--faint)}
+.badge{display:inline-flex; align-items:center; gap:7px; background:rgba(181,122,11,.10); border:1px solid rgba(181,122,11,.35); color:var(--amber); border-radius:8px; padding:6px 11px; font-size:10.5px; max-width:760px}
+.foot .tagline{font-family:"IBM Plex Sans Condensed"; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--muted)}
+
+@media (max-width:1080px){ .kpis{grid-template-columns:repeat(3,1fr)} .grid2{grid-template-columns:1fr} }
+@media (max-width:640px){ .kpis{grid-template-columns:repeat(2,1fr)} .loader h1{font-size:25px} .meta{gap:14px} }
+@media (prefers-reduced-motion:reduce){ *{transition:none !important; animation:none !important} }
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="mark">
+    <div>
+      <div class="logo">STEL<b>I</b>C</div>
+      <div class="tag">Insight &middot; Action &middot; Impact</div>
+    </div>
+    <div class="proj">
+      <h1 id="projTitle">Campus Cost Command</h1>
+      <p id="projSub">Owner cost report reader &middot; load a monthly ACR cost workbook</p>
+    </div>
+  </div>
+  <div class="meta" id="mastMeta" style="display:none">
+    <div class="mcol"><div class="k">Current Budget</div><div class="v" id="mBudget">&mdash;</div></div>
+    <div class="mcol"><div class="k">Committed</div><div class="v" id="mCommit">&mdash;</div></div>
+    <div class="mcol"><div class="k">Cost % Complete</div><div class="v" id="mComplete">&mdash;</div></div>
+    <div class="mcol"><div class="k">Pending Change</div><div class="v crit" id="mExposure">&mdash;</div></div>
+    <div class="rsel">
+      <label for="reportSelect">Report</label>
+      <select id="reportSelect" title="Switch between loaded reports"></select>
+    </div>
+    <div class="seg" id="unitSeg">
+      <button data-u="auto" aria-pressed="true">Auto</button>
+      <button data-u="m" aria-pressed="false">$M</button>
+      <button data-u="b" aria-pressed="false">$B</button>
+    </div>
+    <button class="btn" id="addFile">Add report</button>
+    <button class="btn" id="saveJson" title="Download every loaded report as one JSON file">Save JSON</button>
+    <button class="btn" id="removeReport" title="Remove the report shown above">Remove</button>
+  </div>
+</header>
+
+<nav class="scope" id="scope" aria-label="Report scope" style="display:none">
+  <div class="crumbs" id="crumbs"></div>
+  <div class="legend">
+    <span class="lg"><i class="g"></i>Budget</span>
+    <span class="lg"><i class="a"></i>Committed</span>
+    <span class="lg"><i class="b"></i>Spent</span>
+    <span class="lg"><i class="r"></i>Pending change</span>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- upload screen -->
+  <span id="filechip" style="display:none"><b id="fileName"></b><span id="fileMeta"></span></span>
+  <section class="loader" id="loader">
+    <div class="eyebrow">Owner cost report reader</div>
+    <h1>Drop the monthly cost report in.</h1>
+    <p>Reads the Project Summary, Project Detail, OFCI Breakout, and ODD tabs and builds the campus cost position: budget, commitments, actuals, EAC, and open change exposure.</p>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an Excel cost report to load">
+      <div class="icon">XLS</div>
+      <b>Choose a file or drag it here</b>
+      <small>.xlsx or .xlsm cost report, or a saved .json library. Processed in your browser. Nothing is uploaded anywhere.</small>
+    </div>
+    <input type="file" id="file" accept=".xlsx,.xlsm,.xls,.json" hidden>
+    <div class="err" id="err"></div>
+    <div class="tabs-hint">Expected tabs: Project Summary, Project Detail, OFCI Breakout, ODD</div>
+  </section>
+
+  <!-- dashboard -->
+  <section id="app" style="display:none">
+    <div class="kpis" id="kpis"></div>
+    <nav class="tabs" id="tabs" role="tablist"></nav>
+    <div id="view"></div>
+  </section>
+</div>
+
+<script id="embedded-report">
+/* Pre-loaded MI Cost Report, parsed from MI_Cost_Report_8_18_2026_DEMO.xlsx by the same parser this page uses. */
+/* The upload panel still works: dropping a new .xlsx replaces this and adds it to the report library. */
+window.__EMBEDDED_REPORT__ = {"name":"MI_Cost_Report_8_18_2026_DEMO.xlsx","data":{"summary":[{"item":"Base Building Direct Costs","building":"Core+WH+Ops","original":103281676,"aco":0,"budget":103281676,"commit":49810952,"actual":29969167,"etc":73312509,"eac":103281676,"comment":""},{"item":"Base Building Direct Costs","building":"Compute 1","original":899782599,"aco":0,"budget":899782599,"commit":113390856,"actual":206347070,"etc":693435529,"eac":899782599,"comment":""},{"item":"Base Building Direct Costs","building":"Compute 2","original":959333452,"aco":0,"budget":959333452,"commit":92637538,"actual":86166297,"etc":873167155,"eac":959333452,"comment":""},{"item":"Base Building Direct Costs","building":"Compute 3","original":985555619,"aco":0,"budget":985555619,"commit":99397623,"actual":78776058,"etc":906779561,"eac":985555619,"comment":""},{"item":"Base Building Indirect Costs","building":"Core+WH+Ops","original":8560768,"aco":0,"budget":8560768,"commit":2035864,"actual":1700319,"etc":6860449,"eac":8560768,"comment":""},{"item":"Base Building Indirect Costs","building":"Compute 1","original":105285373,"aco":0,"budget":105285373,"commit":6479318,"actual":11921833,"etc":93363540,"eac":105285373,"comment":""},{"item":"Base Building Indirect Costs","building":"Compute 2","original":128402267,"aco":0,"budget":128402267,"commit":3529572,"actual":5770257,"etc":122632010,"eac":128402267,"comment":""},{"item":"Base Building Indirect Costs","building":"Compute 3","original":102889002,"aco":0,"budget":102889002,"commit":4881911,"actual":5149796,"etc":97739206,"eac":102889002,"comment":""},{"item":"Fitout Direct Costs","building":"Core+WH+Ops","original":34858414,"aco":0,"budget":34858414,"commit":0,"actual":0,"etc":34858414,"eac":34858414,"comment":""},{"item":"Fitout Direct Costs","building":"Compute 1","original":220385422,"aco":0,"budget":220385422,"commit":0,"actual":0,"etc":220385422,"eac":220385422,"comment":""},{"item":"Fitout Direct Costs","building":"Compute 2","original":261449819,"aco":0,"budget":261449819,"commit":0,"actual":0,"etc":261449819,"eac":261449819,"comment":""},{"item":"Fitout Direct Costs","building":"Compute 3","original":216035681,"aco":0,"budget":216035681,"commit":0,"actual":0,"etc":216035681,"eac":216035681,"comment":""},{"item":"Fitout Indirect Costs","building":"Core+WH+Ops","original":9337574,"aco":0,"budget":9337574,"commit":0,"actual":0,"etc":9337574,"eac":9337574,"comment":""},{"item":"Fitout Indirect Costs","building":"Compute 1","original":24743864,"aco":0,"budget":24743864,"commit":0,"actual":0,"etc":24743864,"eac":24743864,"comment":""},{"item":"Fitout Indirect Costs","building":"Compute 2","original":25989825,"aco":0,"budget":25989825,"commit":0,"actual":0,"etc":25989825,"eac":25989825,"comment":""},{"item":"Fitout Indirect Costs","building":"Compute 3","original":24762388,"aco":0,"budget":24762388,"commit":0,"actual":0,"etc":24762388,"eac":24762388,"comment":""},{"item":"OPERATIONS BLDG","building":"Core+WH+Ops","original":12220504,"aco":0,"budget":12220504,"commit":8754363,"actual":2583890,"etc":9636614,"eac":12220504,"comment":""},{"item":"WAREHOUSE","building":"Core+WH+Ops","original":9666738,"aco":0,"budget":9666738,"commit":10844162,"actual":4104385,"etc":5562353,"eac":9666738,"comment":"Sample note for illustration only."},{"item":"Common Allocation-In: Prime GC GMP","building":"Core+WH+Ops","original":11614497,"aco":0,"budget":11614497,"commit":8367489,"actual":3234529,"etc":8379968,"eac":11614497,"comment":""},{"item":"Common Allocation-In: Prime GC GMP","building":"Compute 1","original":309853679,"aco":0,"budget":309853679,"commit":223229396,"actual":86291351,"etc":223562328,"eac":309853679,"comment":""},{"item":"Common Allocation-In: Prime GC GMP","building":"Compute 2","original":220287708,"aco":0,"budget":220287708,"commit":176542595,"actual":68244144,"etc":152043564,"eac":220287708,"comment":""},{"item":"Common Allocation-In: Prime GC GMP","building":"Compute 3","original":202196614,"aco":0,"budget":202196614,"commit":145639691,"actual":56298346,"etc":145898268,"eac":202196614,"comment":""},{"item":"Owner Direct Costs","building":"Core+WH+Ops","original":6737069,"aco":-39508,"budget":6697561,"commit":974774,"actual":974774,"etc":5755849,"eac":6730623,"comment":""},{"item":"Owner Direct Costs","building":"Compute 1","original":113615315,"aco":19555,"budget":113634870,"commit":4655070,"actual":11057895,"etc":100648295,"eac":111706190,"comment":""},{"item":"Owner Direct Costs","building":"Compute 2","original":102649602,"aco":18244,"budget":102667846,"commit":10550293,"actual":10550293,"etc":92552771,"eac":103103064,"comment":""},{"item":"Owner Direct Costs","building":"Compute 3","original":103299755,"aco":18910,"budget":103318665,"commit":8200160,"actual":8200160,"etc":94491187,"eac":102691347,"comment":""},{"item":"OFCI","building":"Core+WH+Ops","original":57247223,"aco":-1169174,"budget":56078049,"commit":45180155,"actual":12883629,"etc":43194420,"eac":56078049,"comment":""},{"item":"OFCI","building":"Compute 1","original":825383306,"aco":723314,"budget":826106620,"commit":715963799,"actual":124444951,"etc":701661669,"eac":826106620,"comment":""},{"item":"OFCI","building":"Compute 2","original":1006272219,"aco":882420,"budget":1007154639,"commit":870942447,"actual":144421502,"etc":862733137,"eac":1007154639,"comment":""},{"item":"OFCI","building":"Compute 3","original":585073306,"aco":513060,"budget":585586366,"commit":506308301,"actual":83969979,"etc":501616387,"eac":585586366,"comment":""},{"item":"Land","building":"Core+WH+Ops","original":1338193,"aco":0,"budget":1338193,"commit":1278113,"actual":1278113,"etc":60080,"eac":1338193,"comment":"Sample note for illustration only."},{"item":"Land","building":"Compute 1","original":22377823,"aco":0,"budget":22377823,"commit":21373141,"actual":21373141,"etc":1004682,"eac":22377823,"comment":""},{"item":"Land","building":"Compute 2","original":30020534,"aco":0,"budget":30020534,"commit":28672721,"actual":28672721,"etc":1347813,"eac":30020534,"comment":""},{"item":"Land","building":"Compute 3","original":26554415,"aco":0,"budget":26554415,"commit":25362218,"actual":25362218,"etc":1192197,"eac":26554415,"comment":""},{"item":"Design \u0026 Professional Fees","building":"Core+WH+Ops","original":2820455,"aco":0,"budget":2820455,"commit":671009,"actual":671009,"etc":2149446,"eac":2820455,"comment":""},{"item":"Design \u0026 Professional Fees","building":"Compute 1","original":68270765,"aco":0,"budget":68270765,"commit":15903549,"actual":15903549,"etc":52367216,"eac":68270765,"comment":""},{"item":"Design \u0026 Professional Fees","building":"Compute 2","original":77300501,"aco":0,"budget":77300501,"commit":17847715,"actual":17847715,"etc":59452786,"eac":77300501,"comment":""},{"item":"Design \u0026 Professional Fees","building":"Compute 3","original":80986644,"aco":0,"budget":80986644,"commit":18655663,"actual":18655663,"etc":62330981,"eac":80986644,"comment":""},{"item":"Financing \u0026 Equity","building":"Core+WH+Ops","original":48522097,"aco":-142640,"budget":48379457,"commit":21949414,"actual":21949414,"etc":26430043,"eac":48379457,"comment":""},{"item":"Financing \u0026 Equity","building":"Compute 1","original":508297417,"aco":91836,"budget":508389253,"commit":226429353,"actual":226429353,"etc":281959900,"eac":508389253,"comment":""},{"item":"Financing \u0026 Equity","building":"Compute 2","original":625064919,"aco":102586,"budget":625167505,"commit":199273907,"actual":199273907,"etc":425893598,"eac":625167505,"comment":""},{"item":"Financing \u0026 Equity","building":"Compute 3","original":549493400,"aco":143808,"budget":549637208,"commit":200007606,"actual":200007606,"etc":349629602,"eac":549637208,"comment":""},{"item":"Developer Fee \u0026 Contingency","building":"Core+WH+Ops","original":17928400,"aco":-78760,"budget":17849640,"commit":1069046,"actual":1069046,"etc":16779782,"eac":17848828,"comment":""},{"item":"Developer Fee \u0026 Contingency","building":"Compute 1","original":192172914,"aco":54787,"budget":192227701,"commit":10537673,"actual":10537673,"etc":181616430,"eac":192154103,"comment":""},{"item":"Developer Fee \u0026 Contingency","building":"Compute 2","original":163551716,"aco":44746,"budget":163596462,"commit":5806422,"actual":5806422,"etc":157799153,"eac":163605575,"comment":""},{"item":"Developer Fee \u0026 Contingency","building":"Compute 3","original":204219739,"aco":56099,"budget":204275838,"commit":6702343,"actual":6702343,"etc":197528689,"eac":204231032,"comment":""}],"program":{"item":"","building":"Program Total","original":10295691210,"aco":1239283,"budget":10296930493,"commit":3909856222,"actual":1844600518,"etc":8450132154,"eac":10294732672,"comment":"","name":"Program"},"buildings":["Core+WH+Ops","Compute 1","Compute 2","Compute 3"],"categories":["Base Building Direct Costs","Base Building Indirect Costs","Fitout Direct Costs","Fitout Indirect Costs","OPERATIONS BLDG","WAREHOUSE","Common Allocation-In: Prime GC GMP","Owner Direct Costs","OFCI","Land","Design \u0026 Professional Fees","Financing \u0026 Equity","Developer Fee \u0026 Contingency"],"byBuilding":[{"budget":322703526,"commit":150935341,"actual":80418275,"etc":242317501,"eac":322735776,"original":324133608,"aco":-1430082,"name":"Core+WH+Ops"},{"budget":3291057969,"commit":1337962155,"actual":714306816,"etc":2574748875,"eac":3289055691,"original":3290168477,"aco":889492,"name":"Compute 1"},{"budget":3601370558,"commit":1405803210,"actual":566753258,"etc":3035061631,"eac":3601814889,"original":3600322562,"aco":1047996,"name":"Compute 2"},{"budget":3081798440,"commit":1015155516,"actual":483122169,"etc":2598004147,"eac":3081126316,"original":3081066563,"aco":731877,"name":"Compute 3"}],"byCategory":[{"budget":2947953346,"commit":355236969,"actual":401258592,"etc":2546694754,"eac":2947953346,"original":2947953346,"aco":0,"name":"Base Building Direct Costs"},{"budget":345137410,"commit":16926665,"actual":24542205,"etc":320595205,"eac":345137410,"original":345137410,"aco":0,"name":"Base Building Indirect Costs"},{"budget":732729336,"commit":0,"actual":0,"etc":732729336,"eac":732729336,"original":732729336,"aco":0,"name":"Fitout Direct Costs"},{"budget":84833651,"commit":0,"actual":0,"etc":84833651,"eac":84833651,"original":84833651,"aco":0,"name":"Fitout Indirect Costs"},{"budget":12220504,"commit":8754363,"actual":2583890,"etc":9636614,"eac":12220504,"original":12220504,"aco":0,"name":"OPERATIONS BLDG"},{"budget":9666738,"commit":10844162,"actual":4104385,"etc":5562353,"eac":9666738,"original":9666738,"aco":0,"name":"WAREHOUSE"},{"budget":743952498,"commit":553779171,"actual":214068370,"etc":529884128,"eac":743952498,"original":743952498,"aco":0,"name":"Common Allocation-In: Prime GC GMP"},{"budget":326318942,"commit":24380297,"actual":30783122,"etc":293448102,"eac":324231224,"original":326301741,"aco":17201,"name":"Owner Direct Costs"},{"budget":2474925674,"commit":2138394702,"actual":365720061,"etc":2109205613,"eac":2474925674,"original":2473976054,"aco":949620,"name":"OFCI"},{"budget":80290965,"commit":76686193,"actual":76686193,"etc":3604772,"eac":80290965,"original":80290965,"aco":0,"name":"Land"},{"budget":229378365,"commit":53077936,"actual":53077936,"etc":176300429,"eac":229378365,"original":229378365,"aco":0,"name":"Design \u0026 Professional Fees"},{"budget":1731573423,"commit":647660280,"actual":647660280,"etc":1083913143,"eac":1731573423,"original":1731377833,"aco":195590,"name":"Financing \u0026 Equity"},{"budget":577949641,"commit":24115484,"actual":24115484,"etc":553724054,"eac":577839538,"original":577872769,"aco":76872,"name":"Developer Fee \u0026 Contingency"}],"detail":[{"desc":"Concrete","isRollup":false,"orig":82761210,"devchg":0,"odd":0,"budget":82761210,"commit":83666830,"tac":82761210,"variance":0,"ctd":41038767,"btc":41722443},{"desc":"Masonry","isRollup":false,"orig":72511,"devchg":0,"odd":0,"budget":72511,"commit":0,"tac":72511,"variance":0,"ctd":0,"btc":72511},{"desc":"Metals","isRollup":false,"orig":119470419,"devchg":0,"odd":0,"budget":119470419,"commit":54725159,"tac":119470419,"variance":0,"ctd":38845915,"btc":80624504},{"desc":"Wood and Plastics","isRollup":false,"orig":3513122,"devchg":0,"odd":0,"budget":3513122,"commit":0,"tac":3513122,"variance":0,"ctd":0,"btc":3513122},{"desc":"Thermal and Moisture Protection","isRollup":false,"orig":61939199,"devchg":0,"odd":0,"budget":61939199,"commit":3324420,"tac":61939199,"variance":0,"ctd":14952612,"btc":46986587},{"desc":"Openings","isRollup":false,"orig":12083617,"devchg":0,"odd":0,"budget":12083617,"commit":0,"tac":12083617,"variance":0,"ctd":0,"btc":12083617},{"desc":"Finishes","isRollup":false,"orig":51669066,"devchg":0,"odd":0,"budget":51669066,"commit":0,"tac":51669066,"variance":0,"ctd":0,"btc":51669066},{"desc":"Specialties","isRollup":false,"orig":1938547,"devchg":0,"odd":0,"budget":1938547,"commit":0,"tac":1938547,"variance":0,"ctd":0,"btc":1938547},{"desc":"Equipment","isRollup":false,"orig":205724,"devchg":0,"odd":0,"budget":205724,"commit":0,"tac":205724,"variance":0,"ctd":0,"btc":205724},{"desc":"Furnishings","isRollup":false,"orig":970718,"devchg":0,"odd":0,"budget":970718,"commit":0,"tac":970718,"variance":0,"ctd":0,"btc":970718},{"desc":"Special Construction","isRollup":false,"orig":101140000,"devchg":0,"odd":0,"budget":101140000,"commit":0,"tac":101140000,"variance":0,"ctd":23647518,"btc":77492482},{"desc":"Fire Protection","isRollup":false,"orig":15481416,"devchg":0,"odd":0,"budget":15481416,"commit":1170524,"tac":15481416,"variance":0,"ctd":994532,"btc":14486884},{"desc":"Plumbing","isRollup":false,"orig":13918671,"devchg":0,"odd":0,"budget":13918671,"commit":1012313,"tac":13918671,"variance":0,"ctd":5309962,"btc":8608709},{"desc":"HVAC","isRollup":false,"orig":1192602439,"devchg":0,"odd":0,"budget":1192602439,"commit":107845990,"tac":1192602439,"variance":0,"ctd":161894151,"btc":1030708288},{"desc":"Integrated Automation","isRollup":false,"orig":163222898,"devchg":0,"odd":0,"budget":163222898,"commit":0,"tac":163222898,"variance":0,"ctd":11530293,"btc":151692605},{"desc":"Electrical","isRollup":false,"orig":956571287,"devchg":0,"odd":0,"budget":956571287,"commit":95427863,"tac":956571287,"variance":0,"ctd":101438382,"btc":855132905},{"desc":"Communications","isRollup":false,"orig":50719477,"devchg":0,"odd":0,"budget":50719477,"commit":2897686,"tac":50719477,"variance":0,"ctd":0,"btc":50719477},{"desc":"Electronic Safety \u0026 Security","isRollup":false,"orig":116219696,"devchg":0,"odd":0,"budget":116219696,"commit":3079064,"tac":116219696,"variance":0,"ctd":0,"btc":116219696},{"desc":"Earthwork","isRollup":false,"orig":183125,"devchg":0,"odd":0,"budget":183125,"commit":0,"tac":183125,"variance":0,"ctd":0,"btc":183125},{"desc":"Trade Partner Preconstruction Services","isRollup":false,"orig":3270204,"devchg":0,"odd":0,"budget":3270204,"commit":2087120,"tac":3270204,"variance":0,"ctd":1606460,"btc":1663744},{"desc":"Base Building Direct Costs","isRollup":true,"orig":2947953346,"devchg":0,"odd":0,"budget":2947953346,"commit":355236969,"tac":2947953346,"variance":0,"ctd":401258592,"btc":2546694754},{"desc":"Subcontractor Insurance (SIP)","isRollup":false,"orig":30064372,"devchg":0,"odd":0,"budget":30064372,"commit":2741287,"tac":30064372,"variance":0,"ctd":5074579,"btc":24989793},{"desc":"Insurance","isRollup":false,"orig":4679679,"devchg":0,"odd":0,"budget":4679679,"commit":552614,"tac":4679679,"variance":0,"ctd":1430311,"btc":3249368},{"desc":"Fee","isRollup":false,"orig":144227247,"devchg":0,"odd":0,"budget":144227247,"commit":13632764,"tac":144227247,"variance":0,"ctd":18037315,"btc":126189932},{"desc":"GC Contingency","isRollup":false,"orig":132997860,"devchg":0,"odd":0,"budget":132997860,"commit":0,"tac":132997860,"variance":0,"ctd":0,"btc":132997860},{"desc":"Trade Partner Craft Labor Protection","isRollup":false,"orig":33168252,"devchg":0,"odd":0,"budget":33168252,"commit":0,"tac":33168252,"variance":0,"ctd":0,"btc":33168252},{"desc":"Base Building Indirect Costs","isRollup":true,"orig":345137410,"devchg":0,"odd":0,"budget":345137410,"commit":16926665,"tac":345137410,"variance":0,"ctd":24542205,"btc":320595205},{"desc":"Total Base Building Costs","isRollup":true,"orig":3293090756,"devchg":0,"odd":0,"budget":3293090756,"commit":372163634,"tac":3293090756,"variance":0,"ctd":425800797,"btc":2867289959},{"desc":"Hot Aisle Containment - Fitout","isRollup":false,"orig":183376795,"devchg":0,"odd":0,"budget":183376795,"commit":0,"tac":183376795,"variance":0,"ctd":0,"btc":183376795},{"desc":"Integrated Automation - Fitout","isRollup":false,"orig":1989158,"devchg":0,"odd":0,"budget":1989158,"commit":0,"tac":1989158,"variance":0,"ctd":0,"btc":1989158},{"desc":"Electrical - Fitout","isRollup":false,"orig":493219342,"devchg":0,"odd":0,"budget":493219342,"commit":0,"tac":493219342,"variance":0,"ctd":0,"btc":493219342},{"desc":"Communications - Fitout","isRollup":false,"orig":34224476,"devchg":0,"odd":0,"budget":34224476,"commit":0,"tac":34224476,"variance":0,"ctd":0,"btc":34224476},{"desc":"Electronic Safety \u0026 Security - Fitout","isRollup":false,"orig":19919565,"devchg":0,"odd":0,"budget":19919565,"commit":0,"tac":19919565,"variance":0,"ctd":0,"btc":19919565},{"desc":"Fitout Direct Costs","isRollup":true,"orig":732729336,"devchg":0,"odd":0,"budget":732729336,"commit":0,"tac":732729336,"variance":0,"ctd":0,"btc":732729336},{"desc":"SPI/Bonds - Fitout Indirect","isRollup":false,"orig":7276359,"devchg":0,"odd":0,"budget":7276359,"commit":0,"tac":7276359,"variance":0,"ctd":0,"btc":7276359},{"desc":"Align Construction Staff/GC/Fee","isRollup":false,"orig":27036982,"devchg":0,"odd":0,"budget":27036982,"commit":0,"tac":27036982,"variance":0,"ctd":0,"btc":27036982},{"desc":"Other Insurance - Fitout Indirect","isRollup":false,"orig":1142007,"devchg":0,"odd":0,"budget":1142007,"commit":0,"tac":1142007,"variance":0,"ctd":0,"btc":1142007},{"desc":"CM Fee - Fitout Indirect","isRollup":false,"orig":28152337,"devchg":0,"odd":0,"budget":28152337,"commit":0,"tac":28152337,"variance":0,"ctd":0,"btc":28152337},{"desc":"GC Contingency - Fitout","isRollup":false,"orig":21225966,"devchg":0,"odd":0,"budget":21225966,"commit":0,"tac":21225966,"variance":0,"ctd":0,"btc":21225966},{"desc":"Fitout Indirect Costs","isRollup":true,"orig":84833651,"devchg":0,"odd":0,"budget":84833651,"commit":0,"tac":84833651,"variance":0,"ctd":0,"btc":84833651},{"desc":"Total Fitout Costs","isRollup":true,"orig":817562987,"devchg":0,"odd":0,"budget":817562987,"commit":0,"tac":817562987,"variance":0,"ctd":0,"btc":817562987},{"desc":"Operations - Direct Hard Costs","isRollup":false,"orig":10871332,"devchg":0,"odd":0,"budget":10871332,"commit":8124200,"tac":10871332,"variance":0,"ctd":2583890,"btc":8287442},{"desc":"Operations - Indirect (SIP/Bonds/Insurance/Fee)","isRollup":false,"orig":851313,"devchg":0,"odd":0,"budget":851313,"commit":630163,"tac":851313,"variance":0,"ctd":0,"btc":851313},{"desc":"Operations - Contingency/Escalation","isRollup":false,"orig":497859,"devchg":0,"odd":0,"budget":497859,"commit":0,"tac":497859,"variance":0,"ctd":0,"btc":497859},{"desc":"Total Costs - OPERATIONS BLDG","isRollup":true,"orig":12220504,"devchg":0,"odd":0,"budget":12220504,"commit":8754363,"tac":12220504,"variance":0,"ctd":2583890,"btc":9636614},{"desc":"Warehouse - Direct Hard Costs","isRollup":false,"orig":8747361,"devchg":0,"odd":0,"budget":8747361,"commit":10117236,"tac":8747361,"variance":0,"ctd":4104385,"btc":4642976},{"desc":"Warehouse - Indirect (SIP/Bonds/Insurance/Fee)","isRollup":false,"orig":631775,"devchg":0,"odd":0,"budget":631775,"commit":726926,"tac":631775,"variance":0,"ctd":0,"btc":631775},{"desc":"Warehouse - Contingency/Escalation","isRollup":false,"orig":287602,"devchg":0,"odd":0,"budget":287602,"commit":0,"tac":287602,"variance":0,"ctd":0,"btc":287602},{"desc":"Total Costs - WAREHOUSE","isRollup":true,"orig":9666738,"devchg":0,"odd":0,"budget":9666738,"commit":10844162,"tac":9666738,"variance":0,"ctd":4104385,"btc":5562353},{"desc":"Total Prime GC GMP excl. Common Area GMP","isRollup":true,"orig":4132540985,"devchg":0,"odd":0,"budget":4132540985,"commit":391762159,"tac":4132540985,"variance":0,"ctd":432489072,"btc":3700051913},{"desc":"Common Allocation-In: Prime GC GMP","isRollup":false,"orig":743952498,"devchg":0,"odd":0,"budget":743952498,"commit":553779171,"tac":743952498,"variance":0,"ctd":214068370,"btc":529884128},{"desc":"Total Prime GC GMP","isRollup":true,"orig":4876493483,"devchg":0,"odd":0,"budget":4876493483,"commit":945541330,"tac":4876493483,"variance":0,"ctd":646557442,"btc":4229936041},{"desc":"Owner's Other Costs","isRollup":false,"orig":21451221,"devchg":-14549031,"odd":0,"budget":6902190,"commit":5308111,"tac":6902190,"variance":0,"ctd":5308111,"btc":1594079},{"desc":"Common Allocation-In: Owner's Other Costs","isRollup":false,"orig":28820537,"devchg":13152348,"odd":0,"budget":41972885,"commit":19072186,"tac":41972885,"variance":0,"ctd":25475011,"btc":16497874},{"desc":"Total L4/L5 Commissioning","isRollup":false,"orig":195637096,"devchg":-326743,"odd":0,"budget":195310353,"commit":0,"tac":195310353,"variance":0,"ctd":0,"btc":195310353},{"desc":"Incremental GC Contingency","isRollup":false,"orig":80392887,"devchg":-364292,"odd":17201,"budget":80045796,"commit":0,"tac":80045796,"variance":0,"ctd":0,"btc":80045796},{"desc":"Total Owner Direct Costs","isRollup":true,"orig":326301741,"devchg":-2087718,"odd":17201,"budget":324231224,"commit":24380297,"tac":324231224,"variance":0,"ctd":30783122,"btc":293448102},{"desc":"OFCI - Allocation In","isRollup":false,"orig":2473976054,"devchg":0,"odd":949620,"budget":2474925674,"commit":2138394702,"tac":2474925674,"variance":0,"ctd":365720061,"btc":2109205613},{"desc":"Total OFCI - Allocation-In","isRollup":true,"orig":2473976054,"devchg":0,"odd":949620,"budget":2474925674,"commit":2138394702,"tac":2474925674,"variance":0,"ctd":365720061,"btc":2109205613},{"desc":"Total HARD COSTS","isRollup":true,"orig":7676771278,"devchg":-2087718,"odd":966821,"budget":7675650381,"commit":3108316329,"tac":7675650381,"variance":0,"ctd":1043060625,"btc":6632589756},{"desc":"Land - Allocation In","isRollup":false,"orig":80290965,"devchg":0,"odd":0,"budget":80290965,"commit":76686193,"tac":80290965,"variance":0,"ctd":76686193,"btc":3604772},{"desc":"Total Land","isRollup":true,"orig":80290965,"devchg":0,"odd":0,"budget":80290965,"commit":76686193,"tac":80290965,"variance":0,"ctd":76686193,"btc":3604772},{"desc":"Architecture \u0026 Engineering + Consultants","isRollup":false,"orig":46180382,"devchg":0,"odd":0,"budget":46180382,"commit":13060506,"tac":46180382,"variance":0,"ctd":13060506,"btc":33119876},{"desc":"Land Use + Entitlements + Other Costs","isRollup":false,"orig":52407386,"devchg":0,"odd":0,"budget":52407386,"commit":4687701,"tac":52407386,"variance":0,"ctd":4687701,"btc":47719685},{"desc":"Permitting + Fees + Utilities","isRollup":false,"orig":17139760,"devchg":0,"odd":0,"budget":17139760,"commit":2802582,"tac":17139760,"variance":0,"ctd":2802582,"btc":14337178},{"desc":"Insurance + Taxes (during Construction)","isRollup":false,"orig":113650837,"devchg":0,"odd":0,"budget":113650837,"commit":32527147,"tac":113650837,"variance":0,"ctd":32527147,"btc":81123690},{"desc":"Total Design \u0026 Professional Fees","isRollup":true,"orig":229378365,"devchg":0,"odd":0,"budget":229378365,"commit":53077936,"tac":229378365,"variance":0,"ctd":53077936,"btc":176300429},{"desc":"Financing Fees","isRollup":false,"orig":560695283,"devchg":0,"odd":0,"budget":560695283,"commit":495932704,"tac":560695283,"variance":0,"ctd":495932704,"btc":64762579},{"desc":"Interest Carry","isRollup":false,"orig":1027735489,"devchg":0,"odd":22182,"budget":1027757671,"commit":132069909,"tac":1027757671,"variance":0,"ctd":132069909,"btc":895687762},{"desc":"Equity Carry","isRollup":false,"orig":142947061,"devchg":0,"odd":173408,"budget":143120469,"commit":19657667,"tac":143120469,"variance":0,"ctd":19657667,"btc":123462802},{"desc":"Total Financing \u0026 Equity","isRollup":true,"orig":1731377833,"devchg":0,"odd":195590,"budget":1731573423,"commit":647660280,"tac":1731573423,"variance":0,"ctd":647660280,"btc":1083913143},{"desc":"Development Fee","isRollup":false,"orig":176785317,"devchg":0,"odd":24908,"budget":176810225,"commit":24115484,"tac":176810225,"variance":0,"ctd":24115484,"btc":152694741},{"desc":"Developer + Government Contingency","isRollup":false,"orig":366944898,"devchg":-694445,"odd":51964,"budget":366302417,"commit":0,"tac":366302417,"variance":0,"ctd":0,"btc":366302417},{"desc":"Common Allocation-In: Developer + Government Contingency","isRollup":false,"orig":34142554,"devchg":584342,"odd":0,"budget":34726896,"commit":0,"tac":34726896,"variance":0,"ctd":0,"btc":34726896},{"desc":"Total Developer Fee \u0026 Contingency","isRollup":true,"orig":577872769,"devchg":-110103,"odd":76872,"budget":577839538,"commit":24115484,"tac":577839538,"variance":0,"ctd":24115484,"btc":553724054},{"desc":"Total SOFT COSTS \u0026 ALLOCATIONS In","isRollup":true,"orig":2618919932,"devchg":-110103,"odd":272462,"budget":2619082291,"commit":801539893,"tac":2619082291,"variance":0,"ctd":801539893,"btc":1817542398},{"desc":"Total Budget","isRollup":true,"orig":10295691210,"devchg":-2197821,"odd":1239283,"budget":10294732672,"commit":3909856222,"tac":10294732672,"variance":0,"ctd":1844600518,"btc":8450132154}],"period":"6/30","odd":{"items":[{"byBuilding":{"Core":2156,"Compute 1":49287,"Compute 2":49287,"Compute 3":49287},"total":150017,"id":"1","status":"Pending","desc":"Change Item 1 - Electrical Scope Revision","comment":"Sample note for illustration only."},{"byBuilding":{"Core":0,"Compute 1":112948257,"Compute 2":118409647,"Compute 3":94184003},"total":325541907,"id":"2","status":"Pending","desc":"Change Item 2 - Mechanical Layout Update","comment":"Sample note for illustration only."},{"byBuilding":{"Core":17628,"Compute 1":402918,"Compute 2":402918,"Compute 3":402918},"total":1226382,"id":"3","status":"Approved","desc":"Change Item 3 - Security System Change","comment":"Sample note for illustration only."},{"byBuilding":{"Core":623829,"Compute 1":623829,"Compute 2":623829,"Compute 3":623829},"total":2495316,"id":"4","status":"Pending","desc":"Change Item 4 - Structural Modification","comment":"Sample note for illustration only."},{"byBuilding":{"Core":0,"Compute 1":0,"Compute 2":0,"Compute 3":0},"total":0,"id":"5","status":"Closed","desc":"Change Item 5 - Controls / BMS Update","comment":"Sample note for illustration only."},{"byBuilding":{"Core":0,"Compute 1":0,"Compute 2":0,"Compute 3":0},"total":0,"id":"6","status":"Pending","desc":"Change Item 6 - Fire Protection Revision","comment":"Sample note for illustration only."},{"byBuilding":{"Core":0,"Compute 1":0,"Compute 2":0,"Compute 3":0},"total":0,"id":"7","status":"Closed","desc":"Change Item 7 - Piping Rerouting","comment":"Sample note for illustration only."},{"byBuilding":{"Core":324133,"Compute 1":648267,"Compute 2":648267,"Compute 3":648267},"total":2268934,"id":"8","status":"Pending","desc":"Change Item 8 - Networking Scope Addition","comment":"Sample note for illustration only."},{"byBuilding":{"Core":0,"Compute 1":0,"Compute 2":0,"Compute 3":0},"total":0,"id":"9","status":"Pending","desc":"Change Item 9 - Site Utilities Adjustment","comment":"Sample note for illustration only."},{"byBuilding":{"Core":6648,"Compute 1":151956,"Compute 2":151956,"Compute 3":151956},"total":462516,"id":"10","status":"Pending","desc":"Change Item 10 - Commissioning Option Change","comment":"Sample note for illustration only."},{"byBuilding":{"Core":11648,"Compute 1":266252,"Compute 2":266252,"Compute 3":266252},"total":810404,"id":"11","status":"Pending","desc":"Change Item 11 - Power Distribution Update","comment":"Sample note for illustration only."},{"byBuilding":{"Core":1627,"Compute 1":37198,"Compute 2":37198,"Compute 3":37198},"total":113221,"id":"12","status":"Pending","desc":"Change Item 12 - Envelope Detailing Change","comment":"Sample note for illustration only."},{"byBuilding":{"Core":0,"Compute 1":0,"Compute 2":0,"Compute 3":0},"total":0,"id":"13","status":"Pending","desc":"Change Item 13 - Electrical Scope Revision","comment":"Sample note for illustration only."},{"byBuilding":{"Core":4039,"Compute 1":92317,"Compute 2":92317,"Compute 3":92317},"total":280990,"id":"14","status":"Pending","desc":"Change Item 14 - Mechanical Layout Update","comment":"Sample note for illustration only."},{"byBuilding":{"Core":3343,"Compute 1":76416,"Compute 2":76416,"Compute 3":76416},"total":232591,"id":"15","status":"Pending","desc":"Change Item 15 - Security System Change","comment":"Sample note for illustration only."},{"byBuilding":{"Core":0,"Compute 1":1026610,"Compute 2":1026610,"Compute 3":1026610},"total":3079830,"id":"16","status":"Pending","desc":"Change Item 16 - Structural Modification","comment":"Sample note for illustration only."},{"byBuilding":{"Core":334487,"Compute 1":0,"Compute 2":0,"Compute 3":0},"total":334487,"id":"17","status":"Pending","desc":"Change Item 17 - Controls / BMS Update","comment":"Sample note for illustration only."},{"byBuilding":{"Core":1881264,"Compute 1":12670940,"Compute 2":12670940,"Compute 3":12670940},"total":39894084,"id":"18","status":"Pending","desc":"Change Item 18 - Fire Protection Revision","comment":"Sample note for illustration only."},{"byBuilding":{"Core":0,"Compute 1":0,"Compute 2":0,"Compute 3":0},"total":0,"id":"19","status":"Pending","desc":"Change Item 19 - Piping Rerouting","comment":""}],"buildings":["Core","Compute 1","Compute 2","Compute 3"],"allowance":{"byBuilding":{"Core":19311412,"Compute 1":203091351,"Compute 2":216787019,"Compute 3":208209264},"total":647399046},"remaining":{"byBuilding":{"Core":16100610,"Compute 1":74097104,"Compute 2":82331382,"Compute 3":97979271},"total":270508367}},"ofci":[{"building":"Core+WH+Ops","code":"NW","no":"29M","equipment":"Generator 3MW (Including Enclosure)","supplier":"Supplier H","category":"Base Building","orig":12228433,"odd":0,"budget":11628475,"commit":10929192,"tac":11628475,"ctd":2179596,"btc":9448879},{"building":"Core+WH+Ops","code":"OP","no":"43M","equipment":"Operations Generator","supplier":"Supplier H","category":"Base Building","orig":0,"odd":0,"budget":536956,"commit":536956,"tac":536956,"ctd":0,"btc":536956},{"building":"Core+WH+Ops","code":"NW","no":"31M","equipment":"House Transformer","supplier":"Supplier M","category":"Base Building","orig":291162,"odd":0,"budget":291162,"commit":241043,"tac":291162,"ctd":0,"btc":291162},{"building":"Core+WH+Ops","code":"NW","no":"28M","equipment":"Padmount Transformer","supplier":"Supplier D","category":"Base Building","orig":1476514,"odd":0,"budget":1476514,"commit":1354527,"tac":1476514,"ctd":0,"btc":1476514},{"building":"Core+WH+Ops","code":"NW","no":"36M","equipment":"UPS","supplier":"Supplier M","category":"Base Building","orig":3487798,"odd":0,"budget":3487798,"commit":3199641,"tac":3487798,"ctd":3199641,"btc":288157},{"building":"Core+WH+Ops","code":"NW","no":"39M","equipment":"House LV Switchgear","supplier":"Supplier M","category":"Base Building","orig":177214,"odd":0,"budget":177214,"commit":126393,"tac":177214,"ctd":0,"btc":177214},{"building":"Core+WH+Ops","code":"NW","no":"40M","equipment":"Fan Walls","supplier":"Supplier N","category":"Base Building","orig":4768017,"odd":0,"budget":4768017,"commit":4475142,"tac":4768017,"ctd":895028,"btc":3872989},{"building":"Core+WH+Ops","code":"NW","no":"30M","equipment":"House Generator - 750 kW","supplier":"Supplier H","category":"Base Building","orig":373999,"odd":0,"budget":373999,"commit":356861,"tac":373999,"ctd":46759,"btc":327240},{"building":"Core+WH+Ops","code":"NW","no":"35M","equipment":"UPS ePOD","supplier":"Supplier I","category":"Base Building","orig":6841024,"odd":0,"budget":6841024,"commit":6275827,"tac":6841024,"ctd":156896,"btc":6684128},{"building":"Core+WH+Ops","code":"NW","no":"37M","equipment":"PDU","supplier":"Supplier M","category":"Base Building","orig":2056248,"odd":0,"budget":2056248,"commit":1942739,"tac":2056248,"ctd":0,"btc":2056248},{"building":"Core+WH+Ops","code":"NW","no":"38M","equipment":"LV Switchgear","supplier":"Supplier D","category":"Base Building","orig":3600405,"odd":0,"budget":3600405,"commit":3302944,"tac":3600405,"ctd":3034644,"btc":565761},{"building":"Core+WH+Ops","code":"NW","no":"42M","equipment":"Air-Cooled Chiller (350 ton)","supplier":"Supplier N","category":"Base Building","orig":8370912,"odd":0,"budget":8370912,"commit":7292782,"tac":8370912,"ctd":1458556,"btc":6912356},{"building":"Core+WH+Ops","code":"NW","no":"46M","equipment":"Wastewater Treatment Generators","supplier":"Supplier J","category":"Base Building","orig":0,"odd":0,"budget":2751,"commit":2751,"tac":2751,"ctd":0,"btc":2751},{"building":"Core+WH+Ops","code":"NW","no":"33M","equipment":"Cable Busway","supplier":"Supplier K","category":"Fitout","orig":12144673,"odd":-1273876,"budget":10870797,"commit":3811449,"tac":10870797,"ctd":762290,"btc":10108507},{"building":"Compute 1","code":"C1","no":"1M","equipment":"Metalclad MV Gear","supplier":"Supplier D","category":"Base Building","orig":18476110,"odd":0,"budget":18476110,"commit":16471917,"tac":18476110,"ctd":3883735,"btc":14592375},{"building":"Compute 1","code":"C1","no":"4M","equipment":"Generator 3MW (Including Enclosure)","supplier":"Supplier H","category":"Base Building","orig":1663949,"odd":0,"budget":1602632,"commit":1520723,"tac":1602632,"ctd":300941,"btc":1301691},{"building":"Compute 1","code":"C1","no":"5M","equipment":"House Transformer","supplier":"Supplier M","category":"Base Building","orig":290778,"odd":0,"budget":290778,"commit":254170,"tac":290778,"ctd":0,"btc":290778},{"building":"Compute 1","code":"C1","no":"6M","equipment":"Padmount Transformer","supplier":"Supplier M","category":"Base Building","orig":14946092,"odd":0,"budget":14946092,"commit":13749578,"tac":14946092,"ctd":0,"btc":14946092},{"building":"Compute 1","code":"C1","no":"6B","equipment":"Padmount Transformer","supplier":"Supplier D","category":"Base Building","orig":15060647,"odd":0,"budget":15060647,"commit":14143852,"tac":15060647,"ctd":3962944,"btc":11097703},{"building":"Compute 1","code":"C1","no":"7M","equipment":"Padmount Transformer - Mech","supplier":"Supplier M","category":"Base Building","orig":9673533,"odd":0,"budget":9673533,"commit":8604031,"tac":9673533,"ctd":0,"btc":9673533},{"building":"Compute 1","code":"C1","no":"7B","equipment":"Padmount Transformer - Mech","supplier":"Supplier D","category":"Base Building","orig":8994048,"odd":0,"budget":8994048,"commit":8103041,"tac":8994048,"ctd":0,"btc":8994048},{"building":"Compute 1","code":"C1","no":"8M","equipment":"Electrical Skid","supplier":"Supplier E","category":"Base Building","orig":24951701,"odd":0,"budget":24951701,"commit":18208247,"tac":24951701,"ctd":7032080,"btc":17919621},{"building":"Compute 1","code":"C1","no":"8B","equipment":"Electrical Skid","supplier":"Supplier G","category":"Base Building","orig":31478494,"odd":0,"budget":31478494,"commit":22755873,"tac":31478494,"ctd":4432633,"btc":27045861},{"building":"Compute 1","code":"C1","no":"9M","equipment":"LV Switchgear (Compute)","supplier":"Supplier M","category":"Base Building","orig":22579671,"odd":0,"budget":22579671,"commit":21408468,"tac":22579671,"ctd":0,"btc":22579671},{"building":"Compute 1","code":"C1","no":"9B","equipment":"LV Switchgear (Compute)","supplier":"Supplier D","category":"Base Building","orig":21586443,"odd":0,"budget":21586443,"commit":20144036,"tac":21586443,"ctd":0,"btc":21586443},{"building":"Compute 1","code":"C1","no":"9A","equipment":"LV Switchgear (Compute)","supplier":"Supplier M","category":"Base Building","orig":1941814,"odd":0,"budget":1941814,"commit":1681125,"tac":1941814,"ctd":0,"btc":1941814},{"building":"Compute 1","code":"C1","no":"10M","equipment":"PDU - Compute Network","supplier":"Supplier M","category":"Base Building","orig":1623107,"odd":0,"budget":1623107,"commit":964802,"tac":1623107,"ctd":0,"btc":1623107},{"building":"Compute 1","code":"C1","no":"10B","equipment":"PDU - Compute Network","supplier":"Supplier D","category":"Base Building","orig":1997288,"odd":0,"budget":1997288,"commit":1762479,"tac":1997288,"ctd":0,"btc":1997288},{"building":"Compute 1","code":"C1","no":"11M","equipment":"PDU - Spine","supplier":"Supplier M","category":"Base Building","orig":3245958,"odd":0,"budget":3245958,"commit":2111174,"tac":3245958,"ctd":0,"btc":3245958},{"building":"Compute 1","code":"C1","no":"12M","equipment":"LV Transformer","supplier":"Supplier M","category":"Base Building","orig":20277507,"odd":0,"budget":20277507,"commit":18183784,"tac":20277507,"ctd":0,"btc":20277507},{"building":"Compute 1","code":"C1","no":"12B","equipment":"LV Transformer","supplier":"Supplier D","category":"Base Building","orig":14011092,"odd":0,"budget":14011092,"commit":13593918,"tac":14011092,"ctd":0,"btc":14011092},{"building":"Compute 1","code":"C1","no":"17M","equipment":"UPS","supplier":"Supplier M","category":"Base Building","orig":60811454,"odd":0,"budget":63323642,"commit":63323643,"tac":63323642,"ctd":0,"btc":63323642},{"building":"Compute 1","code":"C1","no":"17B","equipment":"UPS","supplier":"Supplier L","category":"Base Building","orig":52302991,"odd":0,"budget":52302991,"commit":49638176,"tac":52302991,"ctd":9911797,"btc":42391194},{"building":"Compute 1","code":"C1","no":"17A","equipment":"UPS","supplier":"Supplier M","category":"Base Building","orig":4606757,"odd":0,"budget":4606757,"commit":3641901,"tac":4606757,"ctd":1037942,"btc":3568815},{"building":"Compute 1","code":"C1","no":"18M","equipment":"Mechanical Skid","supplier":"Supplier E","category":"Base Building","orig":4430759,"odd":0,"budget":4430759,"commit":2568262,"tac":4430759,"ctd":908084,"btc":3522675},{"building":"Compute 1","code":"C1","no":"18B","equipment":"Mechanical Skid","supplier":"Supplier G","category":"Base Building","orig":5288893,"odd":0,"budget":5288893,"commit":3137853,"tac":5288893,"ctd":565138,"btc":4723755},{"building":"Compute 1","code":"C1","no":"19M","equipment":"LV Switchgear (Mechanical)","supplier":"Supplier M","category":"Base Building","orig":5597308,"odd":0,"budget":5597308,"commit":5243111,"tac":5597308,"ctd":0,"btc":5597308},{"building":"Compute 1","code":"C1","no":"19B","equipment":"LV Switchgear (Mechanical)","supplier":"Supplier D","category":"Base Building","orig":6080893,"odd":0,"budget":6080893,"commit":5275849,"tac":6080893,"ctd":0,"btc":6080893},{"building":"Compute 1","code":"C1","no":"20M","equipment":"House LV Switchgear","supplier":"Supplier M","category":"Base Building","orig":250913,"odd":0,"budget":250913,"commit":226279,"tac":250913,"ctd":0,"btc":250913},{"building":"Compute 1","code":"C1","no":"21M","equipment":"Mechanical UPS","supplier":"Supplier M","category":"Base Building","orig":8321905,"odd":0,"budget":6000120,"commit":4824444,"tac":6000120,"ctd":0,"btc":6000120},{"building":"Compute 1","code":"C1","no":"21B","equipment":"Mechanical UPS","supplier":"Supplier L","category":"Base Building","orig":9431350,"odd":0,"budget":9431350,"commit":5310898,"tac":9431350,"ctd":1058625,"btc":8372725},{"building":"Compute 1","code":"C1","no":"22M","equipment":"Fan Walls","supplier":"Supplier N","category":"Base Building","orig":9757261,"odd":0,"budget":9757261,"commit":9430552,"tac":9757261,"ctd":1886110,"btc":7871151},{"building":"Compute 1","code":"C1","no":"22B","equipment":"Fan Walls","supplier":"Supplier O","category":"Base Building","orig":11280589,"odd":0,"budget":11280589,"commit":10127412,"tac":11280589,"ctd":1012741,"btc":10267848},{"building":"Compute 1","code":"C1","no":"23M","equipment":"Fan Walls - Spine","supplier":"Supplier N","category":"Base Building","orig":5715076,"odd":0,"budget":5715076,"commit":4600128,"tac":5715076,"ctd":882520,"btc":4832556},{"building":"Compute 1","code":"C1","no":"24M","equipment":"Elec Room CRAHs","supplier":"Supplier N","category":"Base Building","orig":4836160,"odd":0,"budget":4745812,"commit":4519270,"tac":4745812,"ctd":903854,"btc":3841958},{"building":"Compute 1","code":"C1","no":"24A","equipment":"Elec Room CRAHs","supplier":"Supplier N","category":"Base Building","orig":0,"odd":0,"budget":133564,"commit":133564,"tac":133564,"ctd":26713,"btc":106851},{"building":"Compute 1","code":"C1","no":"24B","equipment":"Elec Room CRAHs","supplier":"Supplier O","category":"Base Building","orig":6125485,"odd":0,"budget":6125485,"commit":5768265,"tac":6125485,"ctd":576826,"btc":5548659},{"building":"Compute 1","code":"C1","no":"25M","equipment":"Air-Cooled Chillers (500 ton)","supplier":"Supplier N","category":"Base Building","orig":39731332,"odd":0,"budget":39731332,"commit":36983084,"tac":39731332,"ctd":7396617,"btc":32334715},{"building":"Compute 1","code":"C1","no":"25B","equipment":"Air-Cooled Chillers (500 ton)","supplier":"Supplier B","category":"Base Building","orig":48632406,"odd":0,"budget":48632406,"commit":46097564,"tac":48632406,"ctd":2273621,"btc":46358785},{"building":"Compute 1","code":"C1","no":"26M","equipment":"Thermal Expansion Tanks","supplier":"Supplier C","category":"Base Building","orig":10107710,"odd":0,"budget":10107710,"commit":7798816,"tac":10107710,"ctd":389941,"btc":9717769},{"building":"Compute 1","code":"C1","no":"26A","equipment":"Thermal Expansion Tanks","supplier":"Supplier C","category":"Base Building","orig":1476846,"odd":0,"budget":1476846,"commit":568015,"tac":1476846,"ctd":28401,"btc":1448445},{"building":"Compute 1","code":"C1","no":"46M","equipment":"Wastewater Treatment Generators","supplier":"Supplier J","category":"Base Building","orig":0,"odd":0,"budget":54279,"commit":54279,"tac":54279,"ctd":0,"btc":54279},{"building":"Compute 1","code":"C1","no":"14M","equipment":"Cable Busway","supplier":"Supplier K","category":"Fitout","orig":50771412,"odd":1766550,"budget":52537962,"commit":43151099,"tac":52537962,"ctd":4217765,"btc":48320197},{"building":"Compute 1","code":"C1","no":"14A","equipment":"Cable Busway","supplier":"Supplier K","category":"Fitout","orig":6590344,"odd":-761282,"budget":5829062,"commit":3112029,"tac":5829062,"ctd":311203,"btc":5517859},{"building":"Compute 1","code":"C1","no":"16M","equipment":"RPP","supplier":"Supplier F","category":"Fitout","orig":5996774,"odd":0,"budget":5996774,"commit":1806018,"tac":5996774,"ctd":180602,"btc":5816172},{"building":"Compute 1","code":"C1","no":"27M","equipment":"CDU (2.3MW)","supplier":"Supplier A","category":"Fitout","orig":22286302,"odd":0,"budget":21080932,"commit":16053165,"tac":21080932,"ctd":775927,"btc":20305005},{"building":"Compute 1","code":"C1","no":"27B","equipment":"CDU (2.3MW)","supplier":"Supplier L","category":"Fitout","orig":12297219,"odd":0,"budget":13226975,"commit":13226975,"tac":13226975,"ctd":2557360,"btc":10669615},{"building":"Compute 1","code":"C1","no":"15M","equipment":"Hot Aisle Containment (HAC) Units","supplier":"Supplier E","category":"Fitout","orig":83312862,"odd":0,"budget":73312529,"commit":58846367,"tac":73312529,"ctd":17682401,"btc":55630128},{"building":"Compute 1","code":"C1","no":"15B","equipment":"Hot Aisle Containment (HAC) Units","supplier":"Supplier E","category":"Fitout","orig":88246208,"odd":0,"budget":77653708,"commit":62330936,"tac":77653708,"ctd":18729459,"btc":58924249},{"building":"Compute 1","code":"C1","no":"44M","equipment":"Hot Aisle Containment (HAC) Units","supplier":"Supplier E","category":"Fitout","orig":0,"odd":0,"budget":7004667,"commit":7004667,"tac":7004667,"ctd":7004667,"btc":0},{"building":"Compute 1","code":"C1","no":"45M","equipment":"Hot Aisle Containment (HAC) Units","supplier":"Supplier E","category":"Fitout","orig":0,"odd":0,"budget":15644000,"commit":15644000,"tac":15644000,"ctd":15644000,"btc":0},{"building":"Compute 2","code":"C2","no":"3M","equipment":"Metalclad MV Gear Reserve","supplier":"Supplier D","category":"Base Building","orig":14373583,"odd":0,"budget":14373583,"commit":11671719,"tac":14373583,"ctd":2733836,"btc":11639747},{"building":"Compute 2","code":"C2","no":"4M","equipment":"Generator 3MW (Including Enclosure)","supplier":"Supplier H","category":"Base Building","orig":1347287,"odd":0,"budget":1297639,"commit":1231318,"tac":1297639,"ctd":243670,"btc":1053969},{"building":"Compute 2","code":"C2","no":"5M","equipment":"House Transformer","supplier":"Supplier M","category":"Base Building","orig":332902,"odd":0,"budget":332902,"commit":290991,"tac":332902,"ctd":0,"btc":332902},{"building":"Compute 2","code":"C2","no":"6M","equipment":"Padmount Transformer","supplier":"Supplier M","category":"Base Building","orig":16952187,"odd":0,"budget":16952187,"commit":15579547,"tac":16952187,"ctd":0,"btc":16952187},{"building":"Compute 2","code":"C2","no":"6B","equipment":"Padmount Transformer","supplier":"Supplier D","category":"Base Building","orig":15075124,"odd":0,"budget":15075124,"commit":14157447,"tac":15075124,"ctd":0,"btc":15075124},{"building":"Compute 2","code":"C2","no":"7M","equipment":"Padmount Transformer - Mech","supplier":"Supplier M","category":"Base Building","orig":6239744,"odd":0,"budget":6239744,"commit":5523196,"tac":6239744,"ctd":0,"btc":6239744},{"building":"Compute 2","code":"C2","no":"7B","equipment":"Padmount Transformer - Mech","supplier":"Supplier D","category":"Base Building","orig":7431048,"odd":0,"budget":7431048,"commit":6694881,"tac":7431048,"ctd":0,"btc":7431048},{"building":"Compute 2","code":"C2","no":"8M","equipment":"Electrical Skid","supplier":"Supplier E","category":"Base Building","orig":24003244,"odd":0,"budget":24003244,"commit":17516121,"tac":24003244,"ctd":6764779,"btc":17238465},{"building":"Compute 2","code":"C2","no":"8B","equipment":"Electrical Skid","supplier":"Supplier G","category":"Base Building","orig":20701258,"odd":0,"budget":20701258,"commit":14964985,"tac":20701258,"ctd":2915040,"btc":17786218},{"building":"Compute 2","code":"C2","no":"9M","equipment":"LV Switchgear (Compute)","supplier":"Supplier M","category":"Base Building","orig":19327755,"odd":0,"budget":19327755,"commit":18308661,"tac":19327755,"ctd":0,"btc":19327755},{"building":"Compute 2","code":"C2","no":"9B","equipment":"LV Switchgear (Compute)","supplier":"Supplier D","category":"Base Building","orig":19480897,"odd":0,"budget":19480897,"commit":18179183,"tac":19480897,"ctd":0,"btc":19480897},{"building":"Compute 2","code":"C2","no":"9A","equipment":"LV Switchgear (Compute)","supplier":"Supplier M","category":"Base Building","orig":2198063,"odd":0,"budget":2198063,"commit":1902974,"tac":2198063,"ctd":0,"btc":2198063},{"building":"Compute 2","code":"C2","no":"10M","equipment":"PDU - Compute Network","supplier":"Supplier M","category":"Base Building","orig":1118689,"odd":0,"budget":1118689,"commit":664967,"tac":1118689,"ctd":0,"btc":1118689},{"building":"Compute 2","code":"C2","no":"10B","equipment":"PDU - Compute Network","supplier":"Supplier D","category":"Base Building","orig":2312153,"odd":0,"budget":2312153,"commit":2040327,"tac":2312153,"ctd":0,"btc":2312153},{"building":"Compute 2","code":"C2","no":"11M","equipment":"PDU - Spine","supplier":"Supplier M","category":"Base Building","orig":2500166,"odd":0,"budget":2500166,"commit":1626111,"tac":2500166,"ctd":0,"btc":2500166},{"building":"Compute 2","code":"C2","no":"12M","equipment":"LV Transformer","supplier":"Supplier M","category":"Base Building","orig":17691248,"odd":0,"budget":17691248,"commit":15864565,"tac":17691248,"ctd":0,"btc":17691248},{"building":"Compute 2","code":"C2","no":"12B","equipment":"LV Transformer","supplier":"Supplier D","category":"Base Building","orig":24287449,"odd":0,"budget":24287449,"commit":23564301,"tac":24287449,"ctd":0,"btc":24287449},{"building":"Compute 2","code":"C2","no":"17M","equipment":"UPS","supplier":"Supplier M","category":"Base Building","orig":46717850,"odd":0,"budget":48586470,"commit":48586470,"tac":48586470,"ctd":0,"btc":48586470},{"building":"Compute 2","code":"C2","no":"17B","equipment":"UPS","supplier":"Supplier L","category":"Base Building","orig":74614256,"odd":0,"budget":74614256,"commit":70812692,"tac":74614256,"ctd":14139944,"btc":60474312},{"building":"Compute 2","code":"C2","no":"17A","equipment":"UPS","supplier":"Supplier M","category":"Base Building","orig":6605523,"odd":0,"budget":6605523,"commit":5222038,"tac":6605523,"ctd":0,"btc":6605523},{"building":"Compute 2","code":"C2","no":"18M","equipment":"Mechanical Skid","supplier":"Supplier E","category":"Base Building","orig":4657794,"odd":0,"budget":4657794,"commit":2699861,"tac":4657794,"ctd":954615,"btc":3703179},{"building":"Compute 2","code":"C2","no":"18B","equipment":"Mechanical Skid","supplier":"Supplier G","category":"Base Building","orig":4142428,"odd":0,"budget":4142428,"commit":2376167,"tac":4142428,"ctd":442634,"btc":3699794},{"building":"Compute 2","code":"C2","no":"19M","equipment":"LV Switchgear (Mechanical)","supplier":"Supplier M","category":"Base Building","orig":7842841,"odd":0,"budget":7842841,"commit":7342751,"tac":7842841,"ctd":0,"btc":7842841},{"building":"Compute 2","code":"C2","no":"19B","equipment":"LV Switchgear (Mechanical)","supplier":"Supplier D","category":"Base Building","orig":6520444,"odd":0,"budget":6520444,"commit":5657209,"tac":6520444,"ctd":0,"btc":6520444},{"building":"Compute 2","code":"C2","no":"20M","equipment":"House LV Switchgear","supplier":"Supplier M","category":"Base Building","orig":244005,"odd":0,"budget":244005,"commit":220050,"tac":244005,"ctd":0,"btc":244005},{"building":"Compute 2","code":"C2","no":"21M","equipment":"Mechanical UPS","supplier":"Supplier M","category":"Base Building","orig":6375119,"odd":0,"budget":4653017,"commit":3695837,"tac":4653017,"ctd":0,"btc":4653017},{"building":"Compute 2","code":"C2","no":"21B","equipment":"Mechanical UPS","supplier":"Supplier L","category":"Base Building","orig":8260767,"odd":0,"budget":8260767,"commit":4651729,"tac":8260767,"ctd":927233,"btc":7333534},{"building":"Compute 2","code":"C2","no":"22M","equipment":"Fan Walls","supplier":"Supplier N","category":"Base Building","orig":8736051,"odd":0,"budget":8736051,"commit":8417268,"tac":8736051,"ctd":1683454,"btc":7052597},{"building":"Compute 2","code":"C2","no":"22B","equipment":"Fan Walls","supplier":"Supplier O","category":"Base Building","orig":13942889,"odd":0,"budget":13942889,"commit":12517554,"tac":13942889,"ctd":1251755,"btc":12691134},{"building":"Compute 2","code":"C2","no":"23M","equipment":"Fan Walls - Spine","supplier":"Supplier N","category":"Base Building","orig":4867904,"odd":0,"budget":4867904,"commit":3887639,"tac":4867904,"ctd":745582,"btc":4122322},{"building":"Compute 2","code":"C2","no":"24M","equipment":"Elec Room CRAHs","supplier":"Supplier N","category":"Base Building","orig":5647258,"odd":0,"budget":5541758,"commit":5277220,"tac":5541758,"ctd":1055444,"btc":4486314},{"building":"Compute 2","code":"C2","no":"24A","equipment":"Elec Room CRAHs","supplier":"Supplier N","category":"Base Building","orig":0,"odd":0,"budget":87798,"commit":87798,"tac":87798,"ctd":17560,"btc":70238},{"building":"Compute 2","code":"C2","no":"24B","equipment":"Elec Room CRAHs","supplier":"Supplier O","category":"Base Building","orig":4927629,"odd":0,"budget":4927629,"commit":4640265,"tac":4927629,"ctd":464026,"btc":4463603},{"building":"Compute 2","code":"C2","no":"25M","equipment":"Air-Cooled Chillers (500 ton)","supplier":"Supplier N","category":"Base Building","orig":51979455,"odd":0,"budget":51979455,"commit":48350250,"tac":51979455,"ctd":9670050,"btc":42309405},{"building":"Compute 2","code":"C2","no":"25B","equipment":"Air-Cooled Chillers (500 ton)","supplier":"Supplier B","category":"Base Building","orig":48770732,"odd":0,"budget":48770732,"commit":46228680,"tac":48770732,"ctd":2280088,"btc":46490644},{"building":"Compute 2","code":"C2","no":"26M","equipment":"Thermal Expansion Tanks","supplier":"Supplier C","category":"Base Building","orig":7472060,"odd":0,"budget":7472060,"commit":5765225,"tac":7472060,"ctd":288261,"btc":7183799},{"building":"Compute 2","code":"C2","no":"26A","equipment":"Thermal Expansion Tanks","supplier":"Supplier C","category":"Base Building","orig":984306,"odd":0,"budget":984306,"commit":378578,"tac":984306,"ctd":18929,"btc":965377},{"building":"Compute 2","code":"C2","no":"46M","equipment":"Wastewater Treatment Generators","supplier":"Supplier J","category":"Base Building","orig":0,"odd":0,"budget":41559,"commit":41559,"tac":41559,"ctd":0,"btc":41559},{"building":"Compute 2","code":"C2","no":"14M","equipment":"Cable Busway","supplier":"Supplier K","category":"Fitout","orig":17677147,"odd":619629,"budget":18296776,"commit":15135534,"tac":18296776,"ctd":1479409,"btc":16817367},{"building":"Compute 2","code":"C2","no":"14A","equipment":"Cable Busway","supplier":"Supplier K","category":"Fitout","orig":4986156,"odd":-575974,"budget":4410182,"commit":2354514,"tac":4410182,"ctd":235451,"btc":4174731},{"building":"Compute 2","code":"C2","no":"14B","equipment":"Cable Busway","supplier":"Supplier K","category":"Fitout","orig":24479604,"odd":845516,"budget":25325120,"commit":20653215,"tac":25325120,"ctd":2018730,"btc":23306390},{"building":"Compute 2","code":"C2","no":"16M","equipment":"RPP","supplier":"Supplier F","category":"Fitout","orig":8123514,"odd":0,"budget":8123514,"commit":2446517,"tac":8123514,"ctd":244652,"btc":7878862},{"building":"Compute 2","code":"C2","no":"27M","equipment":"CDU (2.3MW)","supplier":"Supplier A","category":"Fitout","orig":27584090,"odd":0,"budget":26092186,"commit":19869243,"tac":26092186,"ctd":960376,"btc":25131810},{"building":"Compute 2","code":"C2","no":"27B","equipment":"CDU (2.3MW)","supplier":"Supplier L","category":"Fitout","orig":15095491,"odd":0,"budget":16236816,"commit":16236816,"tac":16236816,"ctd":3139296,"btc":13097520},{"building":"Compute 2","code":"C2","no":"15M","equipment":"Hot Aisle Containment (HAC) Units","supplier":"Supplier E","category":"Fitout","orig":104800616,"odd":0,"budget":92221033,"commit":74023810,"tac":92221033,"ctd":22242982,"btc":69978051},{"building":"Compute 2","code":"C2","no":"15B","equipment":"Hot Aisle Containment (HAC) Units","supplier":"Supplier E","category":"Fitout","orig":82112503,"odd":0,"budget":72256253,"commit":57998517,"tac":72256253,"ctd":17427635,"btc":54828618},{"building":"Compute 2","code":"C2","no":"44M","equipment":"Hot Aisle Containment (HAC) Units","supplier":"Supplier E","category":"Fitout","orig":0,"odd":0,"budget":7392000,"commit":7392000,"tac":7392000,"ctd":7392000,"btc":0},{"building":"Compute 2","code":"C2","no":"45M","equipment":"Hot Aisle Containment (HAC) Units","supplier":"Supplier E","category":"Fitout","orig":0,"odd":0,"budget":9554000,"commit":9554000,"tac":9554000,"ctd":9554000,"btc":0},{"building":"Compute 3","code":"C3","no":"3M","equipment":"Metalclad MV Gear Reserve","supplier":"Supplier D","category":"Base Building","orig":16874288,"odd":0,"budget":16874288,"commit":13702356,"tac":16874288,"ctd":3209467,"btc":13664821},{"building":"Compute 3","code":"C3","no":"4M","equipment":"Generator 3MW (Including Enclosure)","supplier":"Supplier H","category":"Base Building","orig":1204636,"odd":0,"budget":1160245,"commit":1100945,"tac":1160245,"ctd":217870,"btc":942375},{"building":"Compute 3","code":"C3","no":"5M","equipment":"House Transformer","supplier":"Supplier M","category":"Base Building","orig":309265,"odd":0,"budget":309265,"commit":270330,"tac":309265,"ctd":0,"btc":309265},{"building":"Compute 3","code":"C3","no":"6M","equipment":"Padmount Transformer","supplier":"Supplier M","category":"Base Building","orig":15988716,"odd":0,"budget":15988716,"commit":14694089,"tac":15988716,"ctd":0,"btc":15988716},{"building":"Compute 3","code":"C3","no":"6B","equipment":"Padmount Transformer","supplier":"Supplier D","category":"Base Building","orig":19280620,"odd":0,"budget":19280620,"commit":18106940,"tac":19280620,"ctd":0,"btc":19280620},{"building":"Compute 3","code":"C3","no":"7M","equipment":"Padmount Transformer - Mech","supplier":"Supplier M","category":"Base Building","orig":7018397,"odd":0,"budget":7018397,"commit":6212431,"tac":7018397,"ctd":0,"btc":7018397},{"building":"Compute 3","code":"C3","no":"7B","equipment":"Padmount Transformer - Mech","supplier":"Supplier D","category":"Base Building","orig":7911274,"odd":0,"budget":7911274,"commit":7127533,"tac":7911274,"ctd":0,"btc":7911274},{"building":"Compute 3","code":"C3","no":"8M","equipment":"Electrical Skid","supplier":"Supplier E","category":"Base Building","orig":25840074,"odd":0,"budget":25840074,"commit":18856528,"tac":25840074,"ctd":7282448,"btc":18557626},{"building":"Compute 3","code":"C3","no":"8B","equipment":"Electrical Skid","supplier":"Supplier G","category":"Base Building","orig":21688155,"odd":0,"budget":21688155,"commit":15678415,"tac":21688155,"ctd":3054010,"btc":18634145},{"building":"Compute 3","code":"C3","no":"9M","equipment":"LV Switchgear (Compute)","supplier":"Supplier M","category":"Base Building","orig":14996728,"odd":0,"budget":14996728,"commit":14205996,"tac":14996728,"ctd":0,"btc":14996728},{"building":"Compute 3","code":"C3","no":"9B","equipment":"LV Switchgear (Compute)","supplier":"Supplier D","category":"Base Building","orig":13353523,"odd":0,"budget":13353523,"commit":12461240,"tac":13353523,"ctd":0,"btc":13353523},{"building":"Compute 3","code":"C3","no":"9A","equipment":"LV Switchgear (Compute)","supplier":"Supplier M","category":"Base Building","orig":1840654,"odd":0,"budget":1840654,"commit":1593547,"tac":1840654,"ctd":0,"btc":1840654},{"building":"Compute 3","code":"C3","no":"10M","equipment":"PDU - Compute Network","supplier":"Supplier M","category":"Base Building","orig":1763084,"odd":0,"budget":1763084,"commit":1048007,"tac":1763084,"ctd":0,"btc":1763084},{"building":"Compute 3","code":"C3","no":"10B","equipment":"PDU - Compute Network","supplier":"Supplier D","category":"Base Building","orig":1577782,"odd":0,"budget":1577782,"commit":1392291,"tac":1577782,"ctd":0,"btc":1577782},{"building":"Compute 3","code":"C3","no":"11M","equipment":"PDU - Spine","supplier":"Supplier M","category":"Base Building","orig":4084730,"odd":0,"budget":4084730,"commit":2656713,"tac":4084730,"ctd":0,"btc":4084730},{"building":"Compute 3","code":"C3","no":"12M","equipment":"LV Transformer","supplier":"Supplier M","category":"Base Building","orig":22842215,"odd":0,"budget":22842215,"commit":20483676,"tac":22842215,"ctd":0,"btc":22842215},{"building":"Compute 3","code":"C3","no":"12B","equipment":"LV Transformer","supplier":"Supplier D","category":"Base Building","orig":15992252,"odd":0,"budget":15992252,"commit":15516090,"tac":15992252,"ctd":0,"btc":15992252},{"building":"Compute 3","code":"C3","no":"17M","equipment":"UPS","supplier":"Supplier M","category":"Base Building","orig":61602554,"odd":0,"budget":64066533,"commit":64066532,"tac":64066533,"ctd":0,"btc":64066533},{"building":"Compute 3","code":"C3","no":"17B","equipment":"UPS","supplier":"Supplier L","category":"Base Building","orig":50302278,"odd":0,"budget":50302278,"commit":47739399,"tac":50302278,"ctd":9532648,"btc":40769630},{"building":"Compute 3","code":"C3","no":"17A","equipment":"UPS","supplier":"Supplier M","category":"Base Building","orig":5824405,"odd":0,"budget":5824405,"commit":4604521,"tac":5824405,"ctd":0,"btc":5824405},{"building":"Compute 3","code":"C3","no":"18M","equipment":"Mechanical Skid","supplier":"Supplier E","category":"Base Building","orig":4734664,"odd":0,"budget":4734664,"commit":2744418,"tac":4734664,"ctd":970370,"btc":3764294},{"building":"Compute 3","code":"C3","no":"18B","equipment":"Mechanical Skid","supplier":"Supplier G","category":"Base Building","orig":4448797,"odd":0,"budget":4448797,"commit":2464379,"tac":4448797,"ctd":475370,"btc":3973427},{"building":"Compute 3","code":"C3","no":"19M","equipment":"LV Switchgear (Mechanical)","supplier":"Supplier M","category":"Base Building","orig":8353096,"odd":0,"budget":8353096,"commit":7820470,"tac":8353096,"ctd":0,"btc":8353096},{"building":"Compute 3","code":"C3","no":"19B","equipment":"LV Switchgear (Mechanical)","supplier":"Supplier D","category":"Base Building","orig":6999476,"odd":0,"budget":6999476,"commit":6072822,"tac":6999476,"ctd":0,"btc":6999476},{"building":"Compute 3","code":"C3","no":"20M","equipment":"House LV Switchgear","supplier":"Supplier M","category":"Base Building","orig":348987,"odd":0,"budget":348987,"commit":314725,"tac":348987,"ctd":0,"btc":348987},{"building":"Compute 3","code":"C3","no":"21M","equipment":"Mechanical UPS","supplier":"Supplier M","category":"Base Building","orig":9071844,"odd":0,"budget":6621279,"commit":5259205,"tac":6621279,"ctd":0,"btc":6621279},{"building":"Compute 3","code":"C3","no":"21B","equipment":"Mechanical UPS","supplier":"Supplier L","category":"Base Building","orig":8785922,"odd":0,"budget":8785922,"commit":4947450,"tac":8785922,"ctd":986179,"btc":7799743},{"building":"Compute 3","code":"C3","no":"22M","equipment":"Fan Walls","supplier":"Supplier N","category":"Base Building","orig":14645477,"odd":0,"budget":14645477,"commit":14111056,"tac":14645477,"ctd":2822211,"btc":11823266},{"building":"Compute 3","code":"C3","no":"22B","equipment":"Fan Walls","supplier":"Supplier O","category":"Base Building","orig":10311559,"odd":0,"budget":10311559,"commit":9257443,"tac":10311559,"ctd":925744,"btc":9385815},{"building":"Compute 3","code":"C3","no":"23M","equipment":"Fan Walls - Spine","supplier":"Supplier N","category":"Base Building","orig":6083629,"odd":0,"budget":6083629,"commit":4858549,"tac":6083629,"ctd":931786,"btc":5151843},{"building":"Compute 3","code":"C3","no":"24M","equipment":"Elec Room CRAHs","supplier":"Supplier N","category":"Base Building","orig":5572494,"odd":0,"budget":5468390,"commit":5207356,"tac":5468390,"ctd":1041471,"btc":4426919},{"building":"Compute 3","code":"C3","no":"24A","equipment":"Elec Room CRAHs","supplier":"Supplier N","category":"Base Building","orig":0,"odd":0,"budget":131762,"commit":131762,"tac":131762,"ctd":26352,"btc":105410},{"building":"Compute 3","code":"C3","no":"24B","equipment":"Elec Room CRAHs","supplier":"Supplier O","category":"Base Building","orig":5802476,"odd":0,"budget":5802476,"commit":5464093,"tac":5802476,"ctd":546409,"btc":5256067},{"building":"Compute 3","code":"C3","no":"25M","equipment":"Air-Cooled Chillers (500 ton)","supplier":"Supplier N","category":"Base Building","orig":57171079,"odd":0,"budget":57171079,"commit":53179394,"tac":57171079,"ctd":10635879,"btc":46535200},{"building":"Compute 3","code":"C3","no":"25B","equipment":"Air-Cooled Chillers (500 ton)","supplier":"Supplier B","category":"Base Building","orig":39510190,"odd":0,"budget":39510190,"commit":37450820,"tac":39510190,"ctd":1847147,"btc":37663043},{"building":"Compute 3","code":"C3","no":"26M","equipment":"Thermal Expansion Tanks","supplier":"Supplier C","category":"Base Building","orig":12851695,"odd":0,"budget":12851695,"commit":9915996,"tac":12851695,"ctd":495800,"btc":12355895},{"building":"Compute 3","code":"C3","no":"26A","equipment":"Thermal Expansion Tanks","supplier":"Supplier C","category":"Base Building","orig":1332141,"odd":0,"budget":1332141,"commit":512360,"tac":1332141,"ctd":25618,"btc":1306523},{"building":"Compute 3","code":"C3","no":"46M","equipment":"Wastewater Treatment Generators","supplier":"Supplier J","category":"Base Building","orig":0,"odd":0,"budget":70449,"commit":70449,"tac":70449,"ctd":0,"btc":70449},{"building":"Compute 3","code":"C3","no":"14A","equipment":"Cable Busway","supplier":"Supplier K","category":"Fitout","orig":6666929,"odd":-770128,"budget":5896801,"commit":3148193,"tac":5896801,"ctd":314819,"btc":5581982},{"building":"Compute 3","code":"C3","no":"14B","equipment":"Cable Busway","supplier":"Supplier K","category":"Fitout","orig":34154494,"odd":1188245,"budget":35342739,"commit":29024964,"tac":35342739,"ctd":2837019,"btc":32505720},{"building":"Compute 3","code":"C3","no":"16M","equipment":"RPP","supplier":"Supplier F","category":"Fitout","orig":6807149,"odd":0,"budget":6807149,"commit":2050074,"tac":6807149,"ctd":205007,"btc":6602142},{"building":"Compute 3","code":"C3","no":"27M","equipment":"CDU (2.3MW)","supplier":"Supplier A","category":"Fitout","orig":28775066,"odd":0,"budget":27218747,"commit":20727121,"tac":27218747,"ctd":1001841,"btc":26216906},{"building":"Compute 3","code":"C3","no":"27B","equipment":"CDU (2.3MW)","supplier":"Supplier L","category":"Fitout","orig":18402986,"odd":0,"budget":19794381,"commit":19794380,"tac":19794381,"ctd":3827131,"btc":15967250},{"building":"Compute 3","code":"C3","no":"15M","equipment":"Hot Aisle Containment (HAC) Units","supplier":"Supplier E","category":"Fitout","orig":85819107,"odd":0,"budget":75517940,"commit":60616602,"tac":75517940,"ctd":18214329,"btc":57303611},{"building":"Compute 3","code":"C3","no":"15B","equipment":"Hot Aisle Containment (HAC) Units","supplier":"Supplier E","category":"Fitout","orig":67180558,"odd":0,"budget":59116641,"commit":47451638,"tac":59116641,"ctd":14258465,"btc":44858176},{"building":"Compute 3","code":"C3","no":"44M","equipment":"Hot Aisle Containment (HAC) Units","supplier":"Supplier E","category":"Fitout","orig":0,"odd":0,"budget":9322833,"commit":9322833,"tac":9322833,"ctd":9322833,"btc":0},{"building":"Compute 3","code":"C3","no":"45M","equipment":"Hot Aisle Containment (HAC) Units","supplier":"Supplier E","category":"Fitout","orig":0,"odd":0,"budget":13038000,"commit":13038000,"tac":13038000,"ctd":13038000,"btc":0}]}};
+</script>
+
+<script>
+/* ===PARSER-START=== */
+function norm(v){ return (v===null||v===undefined) ? '' : String(v).replace(/\s+/g,' ').trim(); }
+function low(v){ return norm(v).toLowerCase(); }
+function num(v){
+  if (v===null||v===undefined||v==='') return 0;
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  var s = String(v).replace(/[$,\s]/g,'');
+  var neg = /^\(.*\)$/.test(s);
+  s = s.replace(/[()]/g,'');
+  var n = parseFloat(s);
+  if (!isFinite(n)) return 0;
+  return neg ? -n : n;
+}
+function isNum(v){ return typeof v === 'number' && isFinite(v); }
+
+function getSheet(wb, patterns){
+  var names = wb.SheetNames;
+  for (var p=0;p<patterns.length;p++){
+    for (var i=0;i<names.length;i++){
+      if (low(names[i]).indexOf(patterns[p]) !== -1) return names[i];
+    }
+  }
+  return null;
+}
+function grid(wb, name){
+  if (!name || !wb.Sheets[name]) return [];
+  return XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1, raw:true, defval:null, blankrows:true});
+}
+function findRow(rows, tokens, limit){
+  limit = limit || rows.length;
+  for (var r=0;r<Math.min(rows.length,limit);r++){
+    var joined = (rows[r]||[]).map(low).join('|');
+    var ok = true;
+    for (var t=0;t<tokens.length;t++){ if (joined.indexOf(tokens[t]) === -1){ ok=false; break; } }
+    if (ok) return r;
+  }
+  return -1;
+}
+function colIndex(headerRow, tokens){
+  for (var c=0;c<headerRow.length;c++){
+    var h = low(headerRow[c]);
+    if (!h) continue;
+    for (var t=0;t<tokens.length;t++){ if (h.indexOf(tokens[t]) !== -1) return c; }
+  }
+  return -1;
+}
+
+function parseSummary(wb){
+  var sn = getSheet(wb, ['project summary','summary']);
+  var rows = grid(wb, sn);
+  var hr = findRow(rows, ['items','building','current budget'], 20);
+  if (hr < 0) return null;
+  var H = rows[hr];
+  var col = {
+    item: colIndex(H, ['items','item']), building: colIndex(H, ['building']),
+    original: colIndex(H, ['original budget']), aco: colIndex(H, ['approved change']),
+    budget: colIndex(H, ['current budget']), commit: colIndex(H, ['commitment']),
+    actual: colIndex(H, ['actual']), etc: colIndex(H, ['etc']), eac: colIndex(H, ['eac']),
+    comments: colIndex(H, ['comment'])
+  };
+  var lines = [], total = null;
+  for (var r=hr+1;r<rows.length;r++){
+    var row = rows[r] || [];
+    var bldg = norm(row[col.building]), item = norm(row[col.item]);
+    if (!bldg && !item) continue;
+    var rec = {
+      item:item, building:bldg,
+      original:num(row[col.original]), aco:num(row[col.aco]), budget:num(row[col.budget]),
+      commit:num(row[col.commit]), actual:num(row[col.actual]), etc:num(row[col.etc]), eac:num(row[col.eac]),
+      comment: col.comments>=0 ? norm(row[col.comments]) : ''
+    };
+    if (/total/i.test(bldg)) { total = rec; continue; }
+    if (!item) continue;
+    if (rec.budget===0 && rec.commit===0 && rec.actual===0 && rec.eac===0) continue;
+    lines.push(rec);
+  }
+  return lines.length ? { lines:lines, total:total } : null;
+}
+
+function parseDetail(wb){
+  var sn = getSheet(wb, ['project detail','detail']);
+  var rows = grid(wb, sn);
+  var hr = findRow(rows, ['original budget','total commitments'], 25);
+  if (hr < 0) return null;
+  var H = rows[hr];
+  var col = {
+    map:colIndex(H,['acr mapping']), desc:colIndex(H,['trade detail','description']),
+    orig:colIndex(H,['a. original','original budget']), devchg:colIndex(H,['developer budget change']),
+    odd:colIndex(H,['final change order','approved odd']), budget:colIndex(H,['d. current','current budget']),
+    commit:colIndex(H,['e. total commitments','total commitments']), tac:colIndex(H,['f. total anticipated','total anticipated']),
+    variance:colIndex(H,['g. variance','variance']), ctd:colIndex(H,['h. cost to date','cost to date']),
+    btc:colIndex(H,['i. balance','balance to complete'])
+  };
+  if (col.desc < 0) return null;
+  var out = [];
+  for (var r=hr+1;r<rows.length;r++){
+    var row = rows[r] || [], d = norm(row[col.desc]);
+    if (!d) continue;
+    if (/^notes:?$/i.test(d)) break;
+    var rec = {
+      desc:d,
+      isRollup: !(col.map>=0 && (isNum(row[col.map]) || /^\d+$/.test(norm(row[col.map])))),
+      orig:num(row[col.orig]), devchg:num(row[col.devchg]), odd:num(row[col.odd]),
+      budget:num(row[col.budget]), commit:num(row[col.commit]), tac:num(row[col.tac]),
+      variance:num(row[col.variance]), ctd:num(row[col.ctd]), btc:num(row[col.btc])
+    };
+    if (rec.budget===0 && rec.commit===0 && rec.ctd===0 && rec.orig===0) continue;
+    out.push(rec);
+  }
+  if (col.ctd >= 0){
+    var m = /thru\s+([0-9A-Za-z\/\.\- ]+)/.exec(norm(H[col.ctd]));
+    if (m) out.period = m[1].trim();
+  }
+  return out.length ? out : null;
+}
+
+function parseODD(wb){
+  var sn = getSheet(wb, ['odd']);
+  var rows = grid(wb, sn);
+  var hr = findRow(rows, ['odd #','status'], 30);
+  if (hr < 0) return null;
+  var H = rows[hr];
+  var col = { id:colIndex(H,['odd #']), status:colIndex(H,['status']), desc:colIndex(H,['odd description','description']),
+              total:colIndex(H,['total']), cmt:colIndex(H,['comment']) };
+  var bcols = [];
+  for (var c=col.desc+1;c<H.length;c++){
+    var h = norm(H[c]); if (!h) continue;
+    if (low(h).indexOf('total')!==-1 || low(h).indexOf('comment')!==-1) break;
+    bcols.push({c:c, name:h});
+  }
+  function readRow(row){
+    var o = { byBuilding:{}, total: col.total>=0 ? num(row[col.total]) : 0 };
+    for (var i=0;i<bcols.length;i++){ o.byBuilding[bcols[i].name] = num(row[bcols[i].c]); }
+    return o;
+  }
+  var items=[], allow=null, remain=null;
+  for (var r=hr+1;r<rows.length;r++){
+    var row = rows[r] || [];
+    var id=norm(row[col.id]), st=norm(row[col.status]), d=norm(row[col.desc]);
+    if (/allowable/i.test(d) && /remaining/i.test(d)) { remain = readRow(row); continue; }
+    if (/allowable/i.test(d)) { allow = readRow(row); continue; }
+    if (!id || !st) continue;
+    var rec = readRow(row);
+    rec.id=id; rec.status=st; rec.desc=d; rec.comment = col.cmt>=0 ? norm(row[col.cmt]) : '';
+    if (!rec.total) rec.total = bcols.reduce(function(s,b){ return s + rec.byBuilding[b.name]; },0);
+    if (!rec.desc && rec.total===0) continue;
+    items.push(rec);
+  }
+  return items.length ? { items:items, buildings:bcols.map(function(b){return b.name;}), allowance:allow, remaining:remain } : null;
+}
+
+function parseOFCI(wb){
+  var sn = getSheet(wb, ['ofci']);
+  var rows = grid(wb, sn);
+  if (!rows.length) return null;
+  var SECTIONS = {'core':'Core+WH+Ops','compute 1':'Compute 1','compute 2':'Compute 2','compute 3':'Compute 3','total (all buildings)':'__ALL__'};
+  var col=null, section=null, category=null, out=[];
+  for (var r=0;r<rows.length;r++){
+    var row = rows[r] || [];
+    var joined = row.map(low).filter(Boolean);
+    if (joined.join('|').indexOf('equip. numb') !== -1){
+      col = {
+        bldg:colIndex(row,['building']), no:colIndex(row,['equip. numb','equip']),
+        equip:colIndex(row,['equipment']), sup:colIndex(row,['supplier']),
+        orig:colIndex(row,['a. original','original budget']), odd:colIndex(row,['approved odds','final change order']),
+        budget:colIndex(row,['d. current','current budget']), commit:colIndex(row,['e. total commitments','total commitments']),
+        tac:colIndex(row,['f. total anticipated','total anticipated']), ctd:colIndex(row,['h. cost to date','cost to date']),
+        btc:colIndex(row,['i. balance','balance to complete'])
+      };
+      continue;
+    }
+    var labels = joined.filter(function(x){ return x.length < 40; });
+    for (var i=0;i<labels.length;i++){
+      if (SECTIONS[labels[i]] !== undefined) section = SECTIONS[labels[i]];
+      if (labels[i] === 'base building ofci') category = 'Base Building';
+      if (labels[i] === 'fitout ofci') category = 'Fitout';
+    }
+    if (!col || !section || section === '__ALL__') continue;
+    var code=norm(row[col.bldg]), no=norm(row[col.no]), eq=norm(row[col.equip]);
+    if (!code || !no || !eq) continue;
+    if (/^total/i.test(no)) continue;
+    var rec = {
+      building:section, code:code, no:no, equipment:eq, supplier:norm(row[col.sup]),
+      category:category||'Base Building', orig:num(row[col.orig]), odd:num(row[col.odd]),
+      budget:num(row[col.budget]), commit:num(row[col.commit]), tac:num(row[col.tac]),
+      ctd:num(row[col.ctd]), btc:num(row[col.btc])
+    };
+    if (rec.budget===0 && rec.commit===0 && rec.ctd===0) continue;
+    out.push(rec);
+  }
+  return out.length ? out : null;
+}
+
+function parseWorkbook(wb){
+  var summary = parseSummary(wb);
+  if (!summary) throw new Error('No "Project Summary" tab found with Items, Building, and Current Budget columns. Check the file and try again.');
+  var buildings=[], seenB={}, categories=[], seenC={};
+  summary.lines.forEach(function(l){
+    if (!seenB[l.building]){ seenB[l.building]=1; buildings.push(l.building); }
+    if (!seenC[l.item]){ seenC[l.item]=1; categories.push(l.item); }
+  });
+  function roll(list){
+    var t={budget:0,commit:0,actual:0,etc:0,eac:0,original:0,aco:0};
+    list.forEach(function(l){ t.budget+=l.budget; t.commit+=l.commit; t.actual+=l.actual; t.etc+=l.etc; t.eac+=l.eac; t.original+=l.original; t.aco+=l.aco; });
+    return t;
+  }
+  var byBuilding = buildings.map(function(b){ var o=roll(summary.lines.filter(function(l){return l.building===b;})); o.name=b; return o; });
+  var byCategory = categories.map(function(c){ var o=roll(summary.lines.filter(function(l){return l.item===c;})); o.name=c; return o; });
+  var program = summary.total ? summary.total : roll(summary.lines);
+  program.name='Program';
+  var detail = parseDetail(wb) || [];
+  return { summary:summary.lines, program:program, buildings:buildings, categories:categories,
+           byBuilding:byBuilding, byCategory:byCategory, detail:detail, period:detail.period || '',
+           odd:parseODD(wb), ofci:parseOFCI(wb)||[] };
+}
+/* ===PARSER-END=== */
+
+/* ---------------- formatting ---------------- */
+var UNITS='auto';
+function money(n){
+  if (n===null||n===undefined||isNaN(n)) return '';
+  var a=Math.abs(n), s=n<0?'-':'';
+  if (UNITS==='b') return s+'$'+(a/1e9).toFixed(2)+'B';
+  if (UNITS==='m') return s+'$'+(a/1e6).toFixed(1)+'M';
+  if (a>=1e9) return s+'$'+(a/1e9).toFixed(2)+'B';
+  if (a>=1e6) return s+'$'+(a/1e6).toFixed(1)+'M';
+  if (a>=1e3) return s+'$'+Math.round(a/1e3)+'K';
+  return s+'$'+a.toFixed(0);
+}
+function moneyA(n){ var u=UNITS; UNITS='auto'; var s=money(n); UNITS=u; return s; }
+function pct(n){ return (n*100).toFixed(1)+'%'; }
+function safePct(a,b){ return b ? a/b : 0; }
+function esc(s){ return String(s===null||s===undefined?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function el(html){ var d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
+
+/* ---------------- chart defaults ---------------- */
+var CH={}; // live chart registry
+function chartDefaults(){
+  Chart.defaults.color='#4A5763';
+  Chart.defaults.font.family="'IBM Plex Sans',sans-serif";
+  Chart.defaults.font.size=10.5;
+  Chart.defaults.borderColor='#EDF0F3';
+  Chart.defaults.plugins.legend.labels.boxWidth=11;
+  Chart.defaults.plugins.legend.labels.boxHeight=11;
+  Chart.defaults.plugins.tooltip.backgroundColor='#FFFFFF';
+  Chart.defaults.plugins.tooltip.borderColor='#DFE4E9';
+  Chart.defaults.plugins.tooltip.borderWidth=1;
+  Chart.defaults.plugins.tooltip.titleColor='#12181F';
+  Chart.defaults.plugins.tooltip.bodyColor='#4A5763';
+  Chart.defaults.plugins.tooltip.padding=10;
+  Chart.defaults.maintainAspectRatio=false;
+}
+function mkChart(id, cfg){
+  var c = document.getElementById(id); if (!c) return;
+  if (CH[id]) CH[id].destroy();
+  CH[id] = new Chart(c.getContext('2d'), cfg);
+}
+function killCharts(){ Object.keys(CH).forEach(function(k){ CH[k].destroy(); delete CH[k]; }); }
+var moneyTick = { callback:function(v){ return money(v); } };
+
+/* ---------------- generic table ---------------- */
+/* cols: {key,label,align,fmt(row),val(row),cls(row),width} */
+function buildTable(cols, rows, opts){
+  opts = opts||{};
+  var state = { key: opts.sortKey || null, dir: opts.sortDir || -1 };
+  var wrap = el('<div class="tblwrap"><table><thead><tr></tr></thead><tbody></tbody></table></div>');
+  var table = wrap.querySelector('table');
+  var htr = wrap.querySelector('thead tr');
+  cols.forEach(function(c){
+    /* Build the TH as a real element. Creating it through the el() helper
+       (which assigns innerHTML on a <div>) makes the browser drop the <th>,
+       leaving a bare text node, which collapses all headers into one line. */
+    var th = document.createElement('th');
+    th.setAttribute('tabindex','0');
+    if (c.align==='r') th.className='r';
+    th.innerHTML = esc(c.label)+'<span class="ar"></span>';
+    th.addEventListener('click', function(){ sortBy(c); });
+    th.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); sortBy(c); } });
+    htr.appendChild(th);
+  });
+  function sortBy(c){
+    if (state.key === c.key) state.dir = -state.dir; else { state.key = c.key; state.dir = c.align==='r' ? -1 : 1; }
+    draw();
+  }
+  function draw(){
+    var data = rows.slice();
+    if (state.key){
+      var c = cols.filter(function(x){ return x.key===state.key; })[0];
+      data.sort(function(a,b){
+        var va = c.val ? c.val(a) : a[c.key], vb = c.val ? c.val(b) : b[c.key];
+        if (typeof va === 'string' || typeof vb === 'string') return String(va).localeCompare(String(vb))*state.dir;
+        return ((va||0)-(vb||0))*state.dir;
+      });
+    }
+    var tb = table.querySelector('tbody');
+    tb.innerHTML = data.map(function(r){
+      return '<tr class="'+(opts.rowClass?opts.rowClass(r):'')+'">'+cols.map(function(c){
+        return '<td class="'+(c.align==='r'?'r ':'')+(c.cls?c.cls(r):'')+'">'+(c.fmt?c.fmt(r):esc(r[c.key]))+'</td>';
+      }).join('')+'</tr>';
+    }).join('');
+    htr.querySelectorAll('th').forEach(function(th,i){
+      th.querySelector('.ar').textContent = (cols[i].key===state.key) ? (state.dir>0?'▲':'▼') : '';
+    });
+    if (opts.footer){
+      var old = table.querySelector('tfoot'); if (old) old.remove();
+      var tf = document.createElement('tfoot');
+      tf.innerHTML = '<tr>'+opts.footer(data).map(function(cell,i){
+        return '<td class="'+(cols[i] && cols[i].align==='r'?'r':'')+'">'+cell+'</td>';
+      }).join('')+'</tr>';
+      table.appendChild(tf);
+    }
+  }
+  draw();
+  wrap.exportCSV = function(name){
+    var lines = [cols.map(function(c){return '"'+c.label.replace(/"/g,'')+'"';}).join(',')];
+    rows.forEach(function(r){
+      lines.push(cols.map(function(c){
+        var v = c.val ? c.val(r) : r[c.key];
+        if (typeof v === 'number') return v;
+        return '"'+String(v===undefined||v===null?'':v).replace(/"/g,'""')+'"';
+      }).join(','));
+    });
+    var blob = new Blob([lines.join('\n')], {type:'text/csv'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1500);
+  };
+  return wrap;
+}
+function panel(title, note, bodyNode, actionsNode){
+  var p = el('<div class="panel"><div class="panel-h"><h2>'+esc(title)+'</h2>'+(note?'<span class="note">'+esc(note)+'</span>':'')+'<span class="spacer"></span></div><div class="panel-b"></div></div>');
+  if (actionsNode) p.querySelector('.panel-h').appendChild(actionsNode);
+  p.querySelector('.panel-b').appendChild(bodyNode);
+  return p;
+}
+function csvBtn(tbl, name){
+  var b = el('<button class="btn">Export CSV</button>');
+  b.addEventListener('click', function(){ tbl.exportCSV(name); });
+  return b;
+}
+function barCell(value, total, color){
+  var w = total ? Math.max(0, Math.min(100, value/total*100)) : 0;
+  return '<div class="bar"><i style="width:'+w.toFixed(1)+'%;background:'+color+'"></i></div>';
+}
+
+/* ---------------- app state ---------------- */
+/* D always points at the ACTIVE report's parsed data. LIB is the full library of
+   every report loaded, persisted to the browser as JSON and exportable to a file. */
+var D=null, TAB='program', BLDG=null, state={};
+var LIB={ reports:[], activeId:null };
+var LS_KEY='mi_cost_library_v1';
+
+function kpis(){
+  var p=D.program;
+  var pendingODD = D.odd ? D.odd.items.filter(function(i){return /pending/i.test(i.status);}).reduce(function(s,i){return s+i.total;},0) : 0;
+  var pendingCount = D.odd ? D.odd.items.filter(function(i){return /pending/i.test(i.status) && i.total>0;}).length : 0;
+  var variance = p.budget - p.eac;
+  var uncommitted = p.budget - p.commit;
+  var cards = [
+    {l:'Current Budget', v:money(p.budget), s:'Original '+moneyA(p.original)+' plus approved changes '+moneyA(p.aco), c:''},
+    {l:'Commitments', v:money(p.commit), s:pct(safePct(p.commit,p.budget))+' of budget committed', c:'copper'},
+    {l:'Actuals to Date', v:money(p.actual), s:pct(safePct(p.actual,p.budget))+' cost based complete', c:'cyan'},
+    {l:'Forecast at Completion', v:money(p.eac), s:'ETC remaining '+moneyA(p.etc), c:''},
+    {l:'Variance to Budget', v:money(variance), s:variance<0?'Forecast over budget':'No forecast overrun reported', c:variance<0?'risk':'ok'},
+    {l:'Pending ODD Exposure', v:money(pendingODD), s:pendingCount+' open changes not in budget', c:pendingODD>0?'risk':''}
+  ];
+  document.getElementById('kpis').innerHTML = cards.map(function(k){
+    return '<div class="kpi '+k.c+'"><div class="kpi-label">'+k.l+'</div><div class="kpi-val">'+k.v+'</div><div class="kpi-sub">'+esc(k.s)+'</div></div>';
+  }).join('');
+}
+
+/* ---------------- signature meters ---------------- */
+function meters(rows, exposureMap){
+  var max = Math.max.apply(null, rows.map(function(r){ return r.budget + (exposureMap && exposureMap[r.name] || 0); }));
+  var box = document.createElement('div');
+  box.innerHTML = rows.map(function(r){
+    var expo = (exposureMap && exposureMap[r.name]) || 0;
+    var scale = function(v){ return max ? (v/max*100) : 0; };
+    var ticks = '';
+    for (var t=1;t<10;t++) ticks += '<div class="tick" style="left:'+(t*10)+'%"></div>';
+    return '<div class="meter">'+
+      '<div class="meter-h"><span class="nm">'+esc(r.name)+'</span>'+
+        '<span class="bd">'+money(r.budget)+' budget</span><span class="spacer"></span>'+
+        '<span class="bd cu">'+pct(safePct(r.commit,r.budget))+' committed</span>'+
+        '<span class="bd cy">'+pct(safePct(r.actual,r.budget))+' spent</span>'+
+        (expo? '<span class="bd risk">'+money(expo)+' pending change</span>':'')+
+      '</div>'+
+      '<div class="track" title="'+esc(r.name)+'">'+ticks+
+        '<div class="seg-commit" style="width:'+scale(r.commit).toFixed(2)+'%"></div>'+
+        '<div class="seg-actual" style="width:'+scale(r.actual).toFixed(2)+'%"></div>'+
+        (expo? '<div class="exposure" style="left:'+scale(r.budget).toFixed(2)+'%;width:'+scale(expo).toFixed(2)+'%"></div>':'')+
+      '</div>'+
+    '</div>';
+  }).join('');
+  var lg = el('<div class="meter-legend">'+
+    '<span><i class="sw a"></i>Actuals to date</span>'+
+    '<span><i class="sw c"></i>Committed, not yet spent</span>'+
+    '<span><i class="sw b"></i>Uncommitted budget</span>'+
+    '<span><i class="sw e"></i>Pending ODD beyond budget</span>'+
+    '<span class="small">Bars share one scale across buildings.</span></div>');
+  box.appendChild(lg);
+  return box;
+}
+function pendingByBuilding(){
+  var map = {};
+  if (!D.odd) return map;
+  D.odd.items.filter(function(i){ return /pending/i.test(i.status); }).forEach(function(i){
+    Object.keys(i.byBuilding).forEach(function(k){
+      var key = matchBuilding(k);
+      map[key] = (map[key]||0) + i.byBuilding[k];
+    });
+  });
+  return map;
+}
+function matchBuilding(name){
+  var n = low(name);
+  var hit = D.buildings.filter(function(b){ return low(b) === n || low(b).indexOf(n) === 0 || n.indexOf(low(b)) === 0; })[0];
+  return hit || name;
+}
+
+/* ---------------- views ---------------- */
+function viewProgram(){
+  var v = document.createElement('div');
+  var expo = pendingByBuilding();
+
+  v.appendChild(panel('Budget consumption by building', 'Committed and spent against current budget, with pending change exposure', meters(D.byBuilding.concat([Object.assign({}, D.program, {name:'Program total'})]), expo)));
+
+  var g = el('<div class="grid2"></div>');
+  var c1 = panel('Budget, commitments and actuals', 'By building', el('<div class="chartbox"><canvas id="chBldg"></canvas></div>'));
+  var c2 = panel('Where the budget sits', 'Current budget by cost category', el('<div class="chartbox"><canvas id="chCat"></canvas></div>'));
+  g.appendChild(c1); g.appendChild(c2); v.appendChild(g);
+
+  var rows = D.byCategory.slice().sort(function(a,b){ return b.budget-a.budget; });
+  var cols = [
+    {key:'name', label:'Cost category', fmt:function(r){ return esc(r.name)+barCell(r.budget, D.program.budget, '#8794A1'); }},
+    {key:'budget', label:'Current budget', align:'r', fmt:function(r){ return money(r.budget); }},
+    {key:'commit', label:'Commitments', align:'r', fmt:function(r){ return '<span class="cu">'+money(r.commit)+'</span>'; }},
+    {key:'actual', label:'Actuals', align:'r', fmt:function(r){ return '<span class="cy">'+money(r.actual)+'</span>'; }},
+    {key:'etc', label:'ETC', align:'r', fmt:function(r){ return money(r.etc); }},
+    {key:'eac', label:'EAC', align:'r', fmt:function(r){ return money(r.eac); }},
+    {key:'pctc', label:'% Complete', align:'r', val:function(r){ return safePct(r.actual,r.budget); }, fmt:function(r){ return pct(safePct(r.actual,r.budget)); }},
+    {key:'unc', label:'Uncommitted', align:'r', val:function(r){ return r.budget-r.commit; }, fmt:function(r){ return money(r.budget-r.commit); }}
+  ];
+  var t = buildTable(cols, rows, {sortKey:'budget', sortDir:-1, footer:function(d){
+    var s=d.reduce(function(a,r){ a.b+=r.budget; a.c+=r.commit; a.a+=r.actual; a.e+=r.etc; a.ea+=r.eac; return a; },{b:0,c:0,a:0,e:0,ea:0});
+    return ['Total', money(s.b), money(s.c), money(s.a), money(s.e), money(s.ea), pct(safePct(s.a,s.b)), money(s.b-s.c)];
+  }});
+  v.appendChild(panel('Program by cost category', D.categories.length+' categories', t, csvBtn(t,'program_by_category.csv')));
+
+  setTimeout(function(){
+    mkChart('chBldg', {
+      type:'bar',
+      data:{ labels:D.byBuilding.map(function(b){return b.name;}),
+        datasets:[
+          {label:'Current budget', data:D.byBuilding.map(function(b){return b.budget;}), backgroundColor:'#8794A1'},
+          {label:'Commitments', data:D.byBuilding.map(function(b){return b.commit;}), backgroundColor:'#B57A0B'},
+          {label:'Actuals to date', data:D.byBuilding.map(function(b){return b.actual;}), backgroundColor:'#175D8C'}
+        ]},
+      options:{ scales:{ y:{ ticks:moneyTick, grid:{color:'#EDF0F3'} }, x:{ grid:{display:false} } },
+        plugins:{ tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+money(c.parsed.y); } } } } }
+    });
+    var top = D.byCategory.slice().sort(function(a,b){return b.budget-a.budget;});
+    var head = top.slice(0,7), rest = top.slice(7).reduce(function(s,r){ return s+r.budget; },0);
+    mkChart('chCat', {
+      type:'doughnut',
+      data:{ labels:head.map(function(r){return r.name;}).concat(rest?['All other']:[]),
+        datasets:[{ data:head.map(function(r){return r.budget;}).concat(rest?[rest]:[]),
+          backgroundColor:['#175D8C','#C2601A','#0E7C5A','#B57A0B','#5F86A8','#8F1D14','#8794A1','#3B5FB0'],
+          borderColor:'#FFFFFF', borderWidth:2 }]},
+      options:{ cutout:'58%', plugins:{ legend:{position:'right', labels:{padding:11}},
+        tooltip:{ callbacks:{ label:function(c){ return c.label+': '+money(c.parsed)+' ('+pct(c.parsed/D.program.budget)+')'; } } } } }
+    });
+  },0);
+  return v;
+}
+
+function viewBuildings(){
+  BLDG = BLDG || D.buildings[0];
+  var v = document.createElement('div');
+  var chips = el('<div class="chips" style="margin-bottom:18px"></div>');
+  D.buildings.forEach(function(b){
+    var c = el('<button class="chip" aria-pressed="'+(b===BLDG)+'">'+esc(b)+'</button>');
+    c.addEventListener('click', function(){ BLDG=b; render(); });
+    chips.appendChild(c);
+  });
+  v.appendChild(chips);
+
+  var lines = D.summary.filter(function(l){ return l.building===BLDG; });
+  var tot = D.byBuilding.filter(function(b){ return b.name===BLDG; })[0];
+  var expo = pendingByBuilding()[BLDG] || 0;
+  var ofciRows = D.ofci.filter(function(r){ return r.building===BLDG; });
+  var ofciBudget = ofciRows.reduce(function(s,r){ return s+r.budget; },0);
+  var ofciCommit = ofciRows.reduce(function(s,r){ return s+r.commit; },0);
+
+  var strip = el('<div class="kpis" style="margin-bottom:20px"></div>');
+  strip.innerHTML = [
+    {l:'Current budget', v:money(tot.budget), s:BLDG+' share of program: '+pct(safePct(tot.budget,D.program.budget)), c:''},
+    {l:'Commitments', v:money(tot.commit), s:pct(safePct(tot.commit,tot.budget))+' of budget', c:'copper'},
+    {l:'Actuals to date', v:money(tot.actual), s:pct(safePct(tot.actual,tot.budget))+' cost based complete', c:'cyan'},
+    {l:'Uncommitted budget', v:money(tot.budget-tot.commit), s:'Still to be bought out', c:''},
+    {l:'OFCI committed', v:money(ofciCommit), s:'Against '+moneyA(ofciBudget)+' OFCI budget', c:''},
+    {l:'Pending ODD', v:money(expo), s:'Not in current budget', c:expo>0?'risk':''}
+  ].map(function(k){ return '<div class="kpi '+k.c+'"><div class="kpi-label">'+k.l+'</div><div class="kpi-val">'+k.v+'</div><div class="kpi-sub">'+esc(k.s)+'</div></div>'; }).join('');
+  v.appendChild(strip);
+
+  var g = el('<div class="grid2"></div>');
+  g.appendChild(panel(BLDG+' by cost category', 'Budget, commitments, actuals', el('<div class="chartbox tall"><canvas id="chB1"></canvas></div>')));
+  g.appendChild(panel('Buyout position', 'Committed versus uncommitted budget', el('<div class="chartbox tall"><canvas id="chB2"></canvas></div>')));
+  v.appendChild(g);
+
+  var cols = [
+    {key:'item', label:'Cost category'},
+    {key:'original', label:'Original budget', align:'r', fmt:function(r){return money(r.original);}},
+    {key:'aco', label:'Approved changes', align:'r', fmt:function(r){return r.aco?money(r.aco):'<span class="muted">0</span>';}},
+    {key:'budget', label:'Current budget', align:'r', fmt:function(r){return money(r.budget);}},
+    {key:'commit', label:'Commitments', align:'r', fmt:function(r){return '<span class="cu">'+money(r.commit)+'</span>';}},
+    {key:'actual', label:'Actuals', align:'r', fmt:function(r){return '<span class="cy">'+money(r.actual)+'</span>';}},
+    {key:'etc', label:'ETC', align:'r', fmt:function(r){return money(r.etc);}},
+    {key:'eac', label:'EAC', align:'r', fmt:function(r){return money(r.eac);}},
+    {key:'var', label:'Variance', align:'r', val:function(r){return r.budget-r.eac;}, fmt:function(r){ var x=r.budget-r.eac; return '<span class="'+(x<-0.5?'risk':'')+'">'+money(x)+'</span>'; }},
+    {key:'pctc', label:'% Complete', align:'r', val:function(r){return safePct(r.actual,r.budget);}, fmt:function(r){return pct(safePct(r.actual,r.budget));}},
+    {key:'comment', label:'Comments', fmt:function(r){ return r.comment ? '<span class="muted">'+esc(r.comment)+'</span>' : ''; }}
+  ];
+  var t = buildTable(cols, lines, {sortKey:'budget', sortDir:-1, footer:function(d){
+    var s=d.reduce(function(a,r){ a.o+=r.original; a.ac+=r.aco; a.b+=r.budget; a.c+=r.commit; a.a+=r.actual; a.e+=r.etc; a.ea+=r.eac; return a; },{o:0,ac:0,b:0,c:0,a:0,e:0,ea:0});
+    return ['Total', money(s.o), money(s.ac), money(s.b), money(s.c), money(s.a), money(s.e), money(s.ea), money(s.b-s.ea), pct(safePct(s.a,s.b)), ''];
+  }});
+  v.appendChild(panel(BLDG+' cost detail', lines.length+' lines from Project Summary', t, csvBtn(t, BLDG.replace(/\W+/g,'_')+'_cost_detail.csv')));
+
+  setTimeout(function(){
+    var sorted = lines.slice().sort(function(a,b){ return b.budget-a.budget; });
+    mkChart('chB1', {
+      type:'bar',
+      data:{ labels:sorted.map(function(r){return r.item;}),
+        datasets:[
+          {label:'Budget', data:sorted.map(function(r){return r.budget;}), backgroundColor:'#8794A1'},
+          {label:'Commitments', data:sorted.map(function(r){return r.commit;}), backgroundColor:'#B57A0B'},
+          {label:'Actuals', data:sorted.map(function(r){return r.actual;}), backgroundColor:'#175D8C'}
+        ]},
+      options:{ indexAxis:'y', scales:{ x:{ ticks:moneyTick, grid:{color:'#EDF0F3'} }, y:{ grid:{display:false}, ticks:{autoSkip:false, font:{size:10.5}} } },
+        plugins:{ tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+money(c.parsed.x); } } } } }
+    });
+    mkChart('chB2', {
+      type:'bar',
+      data:{ labels:sorted.map(function(r){return r.item;}),
+        datasets:[
+          {label:'Actuals', data:sorted.map(function(r){return r.actual;}), backgroundColor:'#175D8C', stack:'s'},
+          {label:'Committed, unspent', data:sorted.map(function(r){return Math.max(0,r.commit-r.actual);}), backgroundColor:'#B57A0B', stack:'s'},
+          {label:'Uncommitted', data:sorted.map(function(r){return Math.max(0,r.budget-Math.max(r.commit,r.actual));}), backgroundColor:'#DFE4E9', stack:'s'}
+        ]},
+      options:{ indexAxis:'y', scales:{ x:{ stacked:true, ticks:moneyTick, grid:{color:'#EDF0F3'} }, y:{ stacked:true, grid:{display:false}, ticks:{autoSkip:false, font:{size:10.5}} } },
+        plugins:{ tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+money(c.parsed.x); } } } } }
+    });
+  },0);
+  return v;
+}
+
+function viewCategories(){
+  var v = document.createElement('div');
+  state.metric = state.metric || 'budget';
+  var METRICS = [['budget','Current budget'],['commit','Commitments'],['actual','Actuals'],['etc','ETC'],['eac','EAC']];
+  var bar = el('<div class="chips" style="margin-bottom:18px"></div>');
+  METRICS.forEach(function(m){
+    var c = el('<button class="chip" aria-pressed="'+(state.metric===m[0])+'">'+m[1]+'</button>');
+    c.addEventListener('click', function(){ state.metric=m[0]; render(); });
+    bar.appendChild(c);
+  });
+  v.appendChild(bar);
+
+  var metricLabel = METRICS.filter(function(m){return m[0]===state.metric;})[0][1];
+  var rows = D.categories.map(function(cat){
+    var o = {name:cat, total:0};
+    D.buildings.forEach(function(b){
+      var line = D.summary.filter(function(l){ return l.item===cat && l.building===b; })[0];
+      o[b] = line ? line[state.metric] : 0;
+      o.total += o[b];
+    });
+    return o;
+  });
+  var cols = [{key:'name', label:'Cost category'}];
+  D.buildings.forEach(function(b){
+    cols.push({key:b, label:b, align:'r', fmt:function(r){ return r[b] ? money(r[b]) : '<span class="muted">0</span>'; }});
+  });
+  cols.push({key:'total', label:'Total', align:'r', fmt:function(r){ return '<b>'+money(r.total)+'</b>'+barCell(r.total, Math.max.apply(null,rows.map(function(x){return x.total;})), '#B57A0B'); }});
+
+  var t = buildTable(cols, rows, {sortKey:'total', sortDir:-1, footer:function(d){
+    var out = ['Total'];
+    D.buildings.forEach(function(b){ out.push(money(d.reduce(function(s,r){ return s+r[b]; },0))); });
+    out.push(money(d.reduce(function(s,r){ return s+r.total; },0)));
+    return out;
+  }});
+  v.appendChild(panel(metricLabel+' by category and building', 'Click any column header to sort', t, csvBtn(t,'category_matrix.csv')));
+
+  v.appendChild(panel(metricLabel+' distribution', 'Stacked by building', el('<div class="chartbox tall"><canvas id="chMat"></canvas></div>')));
+  setTimeout(function(){
+    var sorted = rows.slice().sort(function(a,b){ return b.total-a.total; });
+    var palette = ['#175D8C','#C2601A','#0E7C5A','#B57A0B','#5F86A8','#8F1D14'];
+    mkChart('chMat', {
+      type:'bar',
+      data:{ labels:sorted.map(function(r){return r.name;}),
+        datasets:D.buildings.map(function(b,i){ return {label:b, data:sorted.map(function(r){return r[b];}), backgroundColor:palette[i%palette.length], stack:'s'}; })},
+      options:{ indexAxis:'y', scales:{ x:{stacked:true, ticks:moneyTick, grid:{color:'#EDF0F3'}}, y:{stacked:true, grid:{display:false}, ticks:{autoSkip:false, font:{size:10.5}}} },
+        plugins:{ tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+money(c.parsed.x); } } } } }
+    });
+  },0);
+  return v;
+}
+
+function viewTrades(){
+  var v = document.createElement('div');
+  if (!D.detail.length){ v.appendChild(panel('Trade detail','', el('<p class="muted">No Project Detail tab found in this file.</p>'))); return v; }
+  state.q = state.q || '';
+  state.rollups = state.rollups === undefined ? false : state.rollups;
+
+  var ctr = el('<div class="chips" style="margin-bottom:18px; align-items:center"></div>');
+  var search = el('<input type="search" placeholder="Search trades and line items" value="'+esc(state.q)+'">');
+  search.addEventListener('input', function(){ state.q = search.value; refresh(); });
+  var toggle = el('<button class="chip" aria-pressed="'+state.rollups+'">Show subtotal lines</button>');
+  toggle.addEventListener('click', function(){ state.rollups=!state.rollups; render(); });
+  ctr.appendChild(search); ctr.appendChild(toggle);
+  v.appendChild(ctr);
+
+  function filtered(){
+    return D.detail.filter(function(r){
+      if (!state.rollups && r.isRollup) return false;
+      if (state.q && low(r.desc).indexOf(low(state.q)) === -1) return false;
+      return true;
+    });
+  }
+  var rows = filtered();
+  var maxB = Math.max.apply(null, rows.map(function(r){return r.budget;}).concat([1]));
+  var cols = [
+    {key:'desc', label:'Line item', fmt:function(r){ return (r.isRollup?'<b>':'')+esc(r.desc)+(r.isRollup?'</b>':'')+barCell(r.budget, maxB, r.isRollup?'#B57A0B':'#8794A1'); }},
+    {key:'orig', label:'Original', align:'r', fmt:function(r){return money(r.orig);}},
+    {key:'odd', label:'Approved ODD', align:'r', fmt:function(r){return r.odd?'<span class="cu">'+money(r.odd)+'</span>':'<span class="muted">0</span>';}},
+    {key:'budget', label:'Current budget', align:'r', fmt:function(r){return money(r.budget);}},
+    {key:'commit', label:'Commitments', align:'r', fmt:function(r){return '<span class="cu">'+money(r.commit)+'</span>';}},
+    {key:'buyout', label:'Bought out', align:'r', val:function(r){return safePct(r.commit,r.budget);}, fmt:function(r){return pct(safePct(r.commit,r.budget));}},
+    {key:'ctd', label:'Cost to date', align:'r', fmt:function(r){return '<span class="cy">'+money(r.ctd)+'</span>';}},
+    {key:'tac', label:'Anticipated cost', align:'r', fmt:function(r){return money(r.tac);}},
+    {key:'variance', label:'Variance', align:'r', fmt:function(r){return '<span class="'+(r.variance<-0.5?'risk':'')+'">'+money(r.variance)+'</span>';}},
+    {key:'btc', label:'Balance to complete', align:'r', fmt:function(r){return money(r.btc);}}
+  ];
+  var t = buildTable(cols, rows, {sortKey:'budget', sortDir:-1, rowClass:function(r){ return r.isRollup?'rollup':''; }});
+  var p = panel('Trade and line item detail', rows.length+' lines shown', t, csvBtn(t,'trade_detail.csv'));
+  v.appendChild(p);
+  function refresh(){
+    var f = filtered();
+    var nt = buildTable(cols, f, {sortKey:'budget', sortDir:-1, rowClass:function(r){ return r.isRollup?'rollup':''; }});
+    p.querySelector('.panel-b').innerHTML=''; p.querySelector('.panel-b').appendChild(nt);
+    p.querySelector('.note').textContent = f.length+' lines shown';
+  }
+
+  var top = D.detail.filter(function(r){ return !r.isRollup; }).sort(function(a,b){ return b.budget-a.budget; }).slice(0,15);
+  v.appendChild(panel('Largest 15 line items', 'Current budget, with commitments and cost to date', el('<div class="chartbox tall"><canvas id="chTr"></canvas></div>')));
+  setTimeout(function(){
+    mkChart('chTr', {
+      type:'bar',
+      data:{ labels:top.map(function(r){return r.desc;}),
+        datasets:[
+          {label:'Current budget', data:top.map(function(r){return r.budget;}), backgroundColor:'#8794A1'},
+          {label:'Commitments', data:top.map(function(r){return r.commit;}), backgroundColor:'#B57A0B'},
+          {label:'Cost to date', data:top.map(function(r){return r.ctd;}), backgroundColor:'#175D8C'}
+        ]},
+      options:{ indexAxis:'y', scales:{ x:{ticks:moneyTick, grid:{color:'#EDF0F3'}}, y:{grid:{display:false}, ticks:{autoSkip:false, font:{size:10.5}}} },
+        plugins:{ tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+money(c.parsed.x); } } } } }
+    });
+  },0);
+  return v;
+}
+
+function viewOFCI(){
+  var v = document.createElement('div');
+  if (!D.ofci.length){ v.appendChild(panel('OFCI','', el('<p class="muted">No OFCI Breakout tab found in this file.</p>'))); return v; }
+  state.ofciB = state.ofciB || 'All';
+  state.ofciC = state.ofciC || 'All';
+  state.ofciQ = state.ofciQ || '';
+
+  var bldgs = ['All'].concat(D.ofci.map(function(r){return r.building;}).filter(function(x,i,a){return a.indexOf(x)===i;}));
+  var cats = ['All'].concat(D.ofci.map(function(r){return r.category;}).filter(function(x,i,a){return a.indexOf(x)===i;}));
+
+  var ctr = el('<div class="chips" style="margin-bottom:18px; align-items:center"></div>');
+  bldgs.forEach(function(b){
+    var c = el('<button class="chip" aria-pressed="'+(state.ofciB===b)+'">'+esc(b)+'</button>');
+    c.addEventListener('click', function(){ state.ofciB=b; render(); }); ctr.appendChild(c);
+  });
+  var sel = el('<select></select>');
+  cats.forEach(function(c){ var o=document.createElement('option'); o.value=c; o.textContent=(c==='All'?'All scopes':c); o.selected=(state.ofciC===c); sel.appendChild(o); });
+  sel.addEventListener('change', function(){ state.ofciC=sel.value; render(); });
+  var search = el('<input type="search" placeholder="Search equipment or supplier" value="'+esc(state.ofciQ)+'">');
+  search.addEventListener('input', function(){ state.ofciQ=search.value; refresh(); });
+  ctr.appendChild(sel); ctr.appendChild(search);
+  v.appendChild(ctr);
+
+  function filtered(){
+    return D.ofci.filter(function(r){
+      if (state.ofciB!=='All' && r.building!==state.ofciB) return false;
+      if (state.ofciC!=='All' && r.category!==state.ofciC) return false;
+      if (state.ofciQ){ var q=low(state.ofciQ); if (low(r.equipment).indexOf(q)===-1 && low(r.supplier).indexOf(q)===-1 && low(r.no).indexOf(q)===-1) return false; }
+      return true;
+    });
+  }
+  var rows = filtered();
+  var sum = rows.reduce(function(a,r){ a.b+=r.budget; a.c+=r.commit; a.d+=r.ctd; return a; },{b:0,c:0,d:0});
+  var strip = el('<div class="kpis" style="margin-bottom:20px; grid-template-columns:repeat(4,1fr)"></div>');
+  strip.innerHTML = [
+    {l:'OFCI budget', v:money(sum.b), s:rows.length+' equipment lines', c:''},
+    {l:'Committed', v:money(sum.c), s:pct(safePct(sum.c,sum.b))+' of OFCI budget on order', c:'copper'},
+    {l:'Cost to date', v:money(sum.d), s:pct(safePct(sum.d,sum.b))+' paid', c:'cyan'},
+    {l:'Not yet ordered', v:money(sum.b-sum.c), s:'Remaining OFCI procurement', c:''}
+  ].map(function(k){ return '<div class="kpi '+k.c+'"><div class="kpi-label">'+k.l+'</div><div class="kpi-val">'+k.v+'</div><div class="kpi-sub">'+esc(k.s)+'</div></div>'; }).join('');
+  v.appendChild(strip);
+
+  var g = el('<div class="grid2"></div>');
+  g.appendChild(panel('Supplier exposure', 'Top suppliers by current budget', el('<div class="chartbox tall"><canvas id="chSup"></canvas></div>')));
+  g.appendChild(panel('Largest equipment packages', 'By current budget', el('<div class="chartbox tall"><canvas id="chEq"></canvas></div>')));
+  v.appendChild(g);
+
+  var supMap = {};
+  rows.forEach(function(r){
+    var s = r.supplier || 'Unassigned';
+    supMap[s] = supMap[s] || {name:s, budget:0, commit:0, ctd:0, n:0};
+    supMap[s].budget+=r.budget; supMap[s].commit+=r.commit; supMap[s].ctd+=r.ctd; supMap[s].n++;
+  });
+  var sups = Object.keys(supMap).map(function(k){ return supMap[k]; }).sort(function(a,b){ return b.budget-a.budget; });
+  var supCols = [
+    {key:'name', label:'Supplier'},
+    {key:'n', label:'Packages', align:'r'},
+    {key:'budget', label:'Current budget', align:'r', fmt:function(r){return money(r.budget);}},
+    {key:'commit', label:'Committed', align:'r', fmt:function(r){return '<span class="cu">'+money(r.commit)+'</span>';}},
+    {key:'po', label:'On order', align:'r', val:function(r){return safePct(r.commit,r.budget);}, fmt:function(r){return pct(safePct(r.commit,r.budget));}},
+    {key:'ctd', label:'Cost to date', align:'r', fmt:function(r){return '<span class="cy">'+money(r.ctd)+'</span>';}}
+  ];
+  var st = buildTable(supCols, sups, {sortKey:'budget', sortDir:-1});
+  v.appendChild(panel('OFCI by supplier', sups.length+' suppliers', st, csvBtn(st,'ofci_by_supplier.csv')));
+
+  var eqCols = [
+    {key:'no', label:'Tag'},
+    {key:'equipment', label:'Equipment'},
+    {key:'supplier', label:'Supplier'},
+    {key:'building', label:'Building'},
+    {key:'category', label:'Scope'},
+    {key:'budget', label:'Current budget', align:'r', fmt:function(r){return money(r.budget);}},
+    {key:'commit', label:'Committed', align:'r', fmt:function(r){return '<span class="cu">'+money(r.commit)+'</span>';}},
+    {key:'ctd', label:'Cost to date', align:'r', fmt:function(r){return '<span class="cy">'+money(r.ctd)+'</span>';}},
+    {key:'btc', label:'Balance', align:'r', fmt:function(r){return money(r.btc);}}
+  ];
+  var et = buildTable(eqCols, rows, {sortKey:'budget', sortDir:-1});
+  var ep = panel('OFCI equipment register', rows.length+' lines shown', et, csvBtn(et,'ofci_equipment.csv'));
+  v.appendChild(ep);
+  function refresh(){
+    var f = filtered();
+    var nt = buildTable(eqCols, f, {sortKey:'budget', sortDir:-1});
+    ep.querySelector('.panel-b').innerHTML=''; ep.querySelector('.panel-b').appendChild(nt);
+    ep.querySelector('.note').textContent = f.length+' lines shown';
+  }
+
+  setTimeout(function(){
+    var topS = sups.slice(0,10);
+    mkChart('chSup', {
+      type:'bar',
+      data:{ labels:topS.map(function(r){return r.name;}),
+        datasets:[
+          {label:'Current budget', data:topS.map(function(r){return r.budget;}), backgroundColor:'#8794A1'},
+          {label:'Committed', data:topS.map(function(r){return r.commit;}), backgroundColor:'#B57A0B'}
+        ]},
+      options:{ indexAxis:'y', scales:{ x:{ticks:moneyTick, grid:{color:'#EDF0F3'}}, y:{grid:{display:false}} },
+        plugins:{ tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+money(c.parsed.x); } } } } }
+    });
+    var eqMap = {};
+    rows.forEach(function(r){ eqMap[r.equipment] = (eqMap[r.equipment]||0) + r.budget; });
+    var topE = Object.keys(eqMap).map(function(k){ return {n:k, v:eqMap[k]}; }).sort(function(a,b){ return b.v-a.v; }).slice(0,12);
+    mkChart('chEq', {
+      type:'bar',
+      data:{ labels:topE.map(function(r){return r.n;}),
+        datasets:[{label:'Current budget', data:topE.map(function(r){return r.v;}), backgroundColor:'#175D8C'}]},
+      options:{ indexAxis:'y', plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(c){ return money(c.parsed.x); }}}},
+        scales:{ x:{ticks:moneyTick, grid:{color:'#EDF0F3'}}, y:{grid:{display:false}, ticks:{font:{size:10.5}}} } }
+    });
+  },0);
+  return v;
+}
+
+function viewODD(){
+  var v = document.createElement('div');
+  if (!D.odd){ v.appendChild(panel('Owner directed design changes','', el('<p class="muted">No ODD tab found in this file.</p>'))); return v; }
+  state.oddStatus = state.oddStatus || 'All';
+  var statuses = ['All'].concat(D.odd.items.map(function(i){return i.status;}).filter(function(x,i,a){return a.indexOf(x)===i;}));
+
+  var ctr = el('<div class="chips" style="margin-bottom:18px"></div>');
+  statuses.forEach(function(s){
+    var c = el('<button class="chip" aria-pressed="'+(state.oddStatus===s)+'">'+esc(s)+'</button>');
+    c.addEventListener('click', function(){ state.oddStatus=s; render(); }); ctr.appendChild(c);
+  });
+  v.appendChild(ctr);
+
+  var pending = D.odd.items.filter(function(i){ return /pending/i.test(i.status); });
+  var approved = D.odd.items.filter(function(i){ return /approved/i.test(i.status); });
+  var pendTot = pending.reduce(function(s,i){return s+i.total;},0);
+  var apprTot = approved.reduce(function(s,i){return s+i.total;},0);
+  var allowTot = D.odd.allowance ? D.odd.allowance.total : 0;
+  var remainTot = D.odd.remaining ? D.odd.remaining.total : (allowTot - pendTot - apprTot);
+
+  var strip = el('<div class="kpis" style="margin-bottom:20px; grid-template-columns:repeat(4,1fr)"></div>');
+  strip.innerHTML = [
+    {l:'Pending exposure', v:money(pendTot), s:pending.filter(function(i){return i.total>0;}).length+' priced changes not in budget', c:'risk'},
+    {l:'Approved to date', v:money(apprTot), s:'Already carried in current budget', c:'ok'},
+    {l:'Tenant change allowance', v:money(allowTot), s:'5% allowance per lease section 5.2', c:''},
+    {l:'Allowance remaining', v:money(remainTot), s:remainTot<0?'Allowance exceeded at campus level':pct(safePct(remainTot,allowTot))+' of allowance left', c:remainTot<0?'risk':''}
+  ].map(function(k){ return '<div class="kpi '+k.c+'"><div class="kpi-label">'+k.l+'</div><div class="kpi-val">'+k.v+'</div><div class="kpi-sub">'+esc(k.s)+'</div></div>'; }).join('');
+  v.appendChild(strip);
+
+  if (D.odd.allowance){
+    var box = document.createElement('div');
+    box.innerHTML = D.odd.buildings.map(function(b){
+      var used = D.odd.items.reduce(function(s,i){ return s + (i.byBuilding[b]||0); }, 0);
+      var allow = D.odd.allowance.byBuilding[b] || 0;
+      var p = allow ? Math.min(100, used/allow*100) : 0;
+      var over = used > allow;
+      return '<div class="meter">'+
+        '<div class="meter-h"><span class="nm">'+esc(b)+'</span>'+
+        '<span class="bd">'+money(used)+' of '+money(allow)+' allowance</span><span class="spacer"></span>'+
+        '<span class="bd '+(over?'risk':'ok')+'">'+(over?money(used-allow)+' over':money(allow-used)+' left')+'</span></div>'+
+        '<div class="track"><div class="'+(over?'exposure':'seg-commit')+'" style="left:0;width:'+p.toFixed(1)+'%"></div></div>'+
+      '</div>';
+    }).join('');
+    v.appendChild(panel('Change allowance consumed', 'All priced ODDs against the 5% tenant change allowance', box));
+  }
+
+  var rows = D.odd.items.filter(function(i){ return state.oddStatus==='All' || i.status===state.oddStatus; });
+  var cols = [
+    {key:'id', label:'ODD', fmt:function(r){ return '<b class="num">'+esc(r.id)+'</b>'; }},
+    {key:'status', label:'Status', fmt:function(r){ return '<span class="pill '+low(r.status)+'">'+esc(r.status)+'</span>'; }},
+    {key:'desc', label:'Description', fmt:function(r){ return '<b>'+esc(r.desc||'Not described')+'</b>'+(r.comment?'<div class="small" style="margin-top:4px; max-width:520px">'+esc(r.comment)+'</div>':''); }}
+  ];
+  D.odd.buildings.forEach(function(b){
+    cols.push({key:b, label:b, align:'r', val:function(r){return r.byBuilding[b]||0;}, fmt:function(r){ return r.byBuilding[b] ? money(r.byBuilding[b]) : '<span class="muted">0</span>'; }});
+  });
+  cols.push({key:'total', label:'Total', align:'r', fmt:function(r){ return '<b class="'+(/pending/i.test(r.status)&&r.total>0?'risk':'')+'">'+money(r.total)+'</b>'; }});
+
+  var t = buildTable(cols, rows, {sortKey:'total', sortDir:-1, footer:function(d){
+    var out = ['Total','',''];
+    D.odd.buildings.forEach(function(b){ out.push(money(d.reduce(function(s,r){ return s+(r.byBuilding[b]||0); },0))); });
+    out.push(money(d.reduce(function(s,r){ return s+r.total; },0)));
+    return out;
+  }});
+  v.appendChild(panel('ODD log', rows.length+' changes', t, csvBtn(t,'odd_log.csv')));
+
+  v.appendChild(panel('Pending exposure by change', 'Priced pending ODDs only', el('<div class="chartbox"><canvas id="chOdd"></canvas></div>')));
+  setTimeout(function(){
+    var p = pending.filter(function(i){ return i.total>0; }).sort(function(a,b){ return b.total-a.total; });
+    mkChart('chOdd', {
+      type:'bar',
+      data:{ labels:p.map(function(r){ return 'ODD '+r.id+': '+(r.desc||'').slice(0,34); }),
+        datasets:D.odd.buildings.map(function(b,i){
+          return {label:b, data:p.map(function(r){ return r.byBuilding[b]||0; }), backgroundColor:['#175D8C','#C2601A','#0E7C5A','#B57A0B'][i%4], stack:'s'};
+        })},
+      options:{ indexAxis:'y', scales:{ x:{stacked:true, ticks:moneyTick, grid:{color:'#EDF0F3'}}, y:{stacked:true, grid:{display:false}, ticks:{font:{size:10.5}}} },
+        plugins:{ tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+money(c.parsed.x); } } } } }
+    });
+  },0);
+  return v;
+}
+
+/* ---------------- shell ---------------- */
+/* ---------------- risk & action recommendations ---------------- */
+/* Every signal below is computed locally from the loaded report. No cost data
+   leaves the browser. Each flag traces to figures the user can see in the tabs. */
+function computeSignals(){
+  var out=[], p=D.program, prog=p.budget||0;
+  var sevByRatio=function(r){ return r>=0.02 ? 'high' : r>=0.005 ? 'med' : 'low'; };
+
+  var pend = D.odd ? D.odd.items.filter(function(i){ return /pending/i.test(i.status); }) : [];
+  var pendTot = pend.reduce(function(s,i){ return s+i.total; },0);
+  var pendCnt = pend.filter(function(i){ return i.total>0; }).length;
+  if (pendTot>0){
+    out.push({ sev:sevByRatio(prog?pendTot/prog:0), value:pendTot,
+      title:'Pending owner changes outside budget',
+      detail:money(pendTot)+' in priced pending ODDs across '+pendCnt+' open changes is not reflected in the current budget of '+money(prog)+'.',
+      action:'Price and disposition the open ODDs, and confirm contingency or management reserve absorbs this exposure before it converts to committed cost.' });
+  }
+
+  if (D.odd && D.odd.allowance){
+    var allowTot=D.odd.allowance.total||0;
+    var apprTot=D.odd.items.filter(function(i){ return /approved/i.test(i.status); }).reduce(function(s,i){ return s+i.total; },0);
+    var remainTot=(D.odd.remaining && typeof D.odd.remaining.total==='number') ? D.odd.remaining.total : (allowTot - pendTot - apprTot);
+    if (allowTot>0){
+      if (remainTot<0){
+        out.push({ sev:'high', value:-remainTot, title:'Tenant change allowance exceeded',
+          detail:'Priced changes exceed the tenant change allowance of '+money(allowTot)+' by '+money(-remainTot)+'.',
+          action:'Reconcile the allowance ledger and open commercial recovery or a lease change order for the overage. Overages here fall to the owner unless recovered.' });
+      } else if (remainTot < 0.15*allowTot){
+        out.push({ sev:'med', value:remainTot, title:'Tenant change allowance nearly consumed',
+          detail:money(remainTot)+' remains of the '+money(allowTot)+' tenant change allowance ('+pct(remainTot/allowTot)+' left).',
+          action:'Tighten change intake and flag that further approved changes will begin drawing on owner funds rather than the allowance.' });
+      }
+    }
+  }
+
+  var overCats=D.byCategory.map(function(c){ return {name:c.name, v:(c.eac||0)-(c.budget||0)}; })
+    .filter(function(x){ return x.v>1; }).sort(function(a,b){ return b.v-a.v; });
+  var overTot=overCats.reduce(function(s,x){ return s+x.v; },0);
+  if (overTot>0){
+    out.push({ sev:sevByRatio(prog?overTot/prog:0), value:overTot, title:'Forecast over budget',
+      detail:money(overTot)+' of forecast overrun across '+overCats.length+' categories, led by '+overCats[0].name+' ('+money(overCats[0].v)+').',
+      action:'Build a recovery plan for the driving categories and confirm the EAC reflects known trends. A rising EAC above budget is the earliest hard signal of a cost problem.' });
+  } else {
+    out.push({ sev:'low', value:0, title:'No forecast overrun reported',
+      detail:'EAC equals budget across all '+D.byCategory.length+' categories, so no category is currently forecast to finish over budget.',
+      action:'Keep pressure on EAC discipline. A flat EAC this early in buyout can also mean trends are not yet posted, so confirm the forecast is actively maintained.' });
+  }
+
+  var unbought=D.byCategory.filter(function(c){ return c.budget>0 && (c.commit/c.budget)<0.03; }).sort(function(a,b){ return b.budget-a.budget; });
+  if (unbought.length){
+    var u=unbought[0];
+    out.push({ sev:sevByRatio(prog?u.budget/prog:0), value:u.budget, title:'Largest scope not yet bought',
+      detail:u.name+' carries '+money(u.budget)+' of budget at '+pct(safePct(u.commit,u.budget))+' committed, so its pricing and schedule are still fully open.'+(unbought.length>1?' '+(unbought.length-1)+' other categor'+(unbought.length-1>1?'ies are':'y is')+' also under 3 percent committed.':''),
+      action:'Confirm the buyout and award timeline for this scope. Unbought budget of this size is the single largest driver of cost uncertainty on the program.' });
+  }
+
+  var uncomm=prog-(p.commit||0);
+  if (prog>0 && uncomm/prog>0.4){
+    out.push({ sev:'med', value:uncomm, title:'Majority of budget remains uncommitted',
+      detail:pct(uncomm/prog)+' of the program budget ('+money(uncomm)+') is not yet committed, so market pricing is not locked.',
+      action:'Prioritize buyout of the largest uncommitted packages to convert budget into firm commitments. Track committed percent as the primary cost certainty measure through this phase.' });
+  }
+
+  var actGt=D.byCategory.filter(function(c){ return c.actual>0 && c.actual>c.commit+1; }).sort(function(a,b){ return (b.actual-b.commit)-(a.actual-a.commit); });
+  if (actGt.length){
+    var a0=actGt[0];
+    out.push({ sev:'med', value:a0.actual-a0.commit, title:'Actuals booked ahead of commitments',
+      detail:actGt.length+' categor'+(actGt.length>1?'ies show':'y shows')+' spend above committed value, led by '+a0.name+' ('+money(a0.actual)+' spent against '+money(a0.commit)+' committed).',
+      action:'Reconcile these categories. Either commitments are understated (missing contracts or POs) or cost is being booked ahead of award. Correct the commitment register so committed and EAC figures can be trusted.' });
+  }
+
+  var pbb=pendingByBuilding();
+  var pbbArr=Object.keys(pbb).map(function(k){ return {name:k, v:pbb[k]}; }).filter(function(x){ return x.v>0; }).sort(function(a,b){ return b.v-a.v; });
+  if (pbbArr.length>1){
+    out.push({ sev:'low', value:pbbArr[0].v, title:'Pending change concentrated in one building',
+      detail:pbbArr[0].name+' holds '+money(pbbArr[0].v)+' of pending change exposure, the most of any building.',
+      action:'Focus change intake and disposition on '+pbbArr[0].name+' first, since resolving it clears the largest single share of open exposure.' });
+  }
+
+  var rank={high:0,med:1,low:2};
+  out.sort(function(a,b){ return rank[a.sev]-rank[b.sev] || b.value-a.value; });
+  return out;
+}
+
+function viewRisk(){
+  var v=document.createElement('div');
+  var sig=computeSignals(), p=D.program;
+  var high=sig.filter(function(s){ return s.sev==='high'; }).length;
+  var med =sig.filter(function(s){ return s.sev==='med'; }).length;
+  var low =sig.filter(function(s){ return s.sev==='low'; }).length;
+  var pend=D.odd ? D.odd.items.filter(function(i){ return /pending/i.test(i.status); }).reduce(function(s,i){ return s+i.total; },0) : 0;
+
+  var read='This report shows '+money(p.budget)+' of current budget, '+pct(safePct(p.commit,p.budget))+' committed and '+pct(safePct(p.actual,p.budget))+' spent'+
+    (pend>0 ? ', with '+money(pend)+' of pending owner changes sitting outside the budget' : '')+'. '+
+    (high ? 'The analysis flags '+high+' high priority item'+(high>1?'s':'')+(med?' and '+med+' to monitor':'')+'.'
+          : med ? 'No high priority risks are flagged. '+med+' item'+(med>1?'s':'')+' are worth monitoring.'
+                : 'No material risks are flagged from this report.');
+
+  var sevLabel={high:'High',med:'Monitor',low:'Context'};
+
+  v.appendChild(el('<div class="rk-read"><div class="eye">Generated risk read</div><p>'+esc(read)+'</p>'+
+    '<div class="tally">'+
+      '<span class="rk-pill"><i style="background:var(--red)"></i>High <b>'+high+'</b></span>'+
+      '<span class="rk-pill"><i style="background:var(--amber)"></i>Monitor <b>'+med+'</b></span>'+
+      '<span class="rk-pill"><i style="background:var(--blue)"></i>Context <b>'+low+'</b></span>'+
+    '</div></div>'));
+
+  var list=document.createElement('div'); list.className='rk-list';
+  list.innerHTML=sig.map(function(s){
+    return '<div class="rk '+s.sev+'">'+
+      '<div class="rk-top"><span class="rk-sev">'+sevLabel[s.sev]+'</span>'+
+        '<span class="rk-title">'+esc(s.title)+'</span>'+
+        (s.value>0 ? '<span class="rk-val">'+money(s.value)+'</span>' : '')+'</div>'+
+      '<p class="rk-detail">'+esc(s.detail)+'</p>'+
+      '<p class="rk-act"><b>Recommended action</b>'+esc(s.action)+'</p>'+
+    '</div>';
+  }).join('');
+
+  var copyBtn=el('<button class="btn">Copy summary</button>');
+  copyBtn.addEventListener('click', function(){
+    var txt='MI Campus cost report'+(D.period?' (through '+D.period+')':'')+'. Risk and actions.\n\n'+read+'\n\n'+
+      sig.map(function(s,i){ return (i+1)+'. ['+sevLabel[s.sev].toUpperCase()+'] '+s.title+(s.value>0?' ('+money(s.value)+')':'')+'\n   '+s.detail+'\n   Action: '+s.action; }).join('\n\n');
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(function(){ copyBtn.textContent='Copied'; setTimeout(function(){ copyBtn.textContent='Copy summary'; },1400); });
+    }
+  });
+
+  var body=document.createElement('div');
+  body.appendChild(list);
+  body.appendChild(el('<p class="rk-note">Signals are generated locally from the loaded report, so no cost data leaves your browser. They are decision support for the controls team and do not replace schedule, contract, and trend review.</p>'));
+  v.appendChild(panel('Recommended actions', sig.length+' signals', body, copyBtn));
+  return v;
+}
+
+/* ---------------- per-tab summary and recommendation ---------------- */
+/* Reads the data behind the active tab and returns a plain-language summary
+   plus the single most useful recommendation for that view. Computed locally. */
+function pendingInfo(){
+  var pend = D.odd ? D.odd.items.filter(function(i){ return /pending/i.test(i.status); }) : [];
+  var appr = D.odd ? D.odd.items.filter(function(i){ return /approved/i.test(i.status); }) : [];
+  var pendTot = pend.reduce(function(s,i){ return s+i.total; },0);
+  var apprTot = appr.reduce(function(s,i){ return s+i.total; },0);
+  var allowTot = (D.odd && D.odd.allowance) ? (D.odd.allowance.total||0) : 0;
+  var remainTot = (D.odd && D.odd.remaining && typeof D.odd.remaining.total==='number') ? D.odd.remaining.total : (allowTot - pendTot - apprTot);
+  return { pendTot:pendTot, apprTot:apprTot, allowTot:allowTot, remainTot:remainTot,
+           pendCnt:pend.filter(function(i){ return i.total>0; }).length, apprCnt:appr.length, nItems:D.odd?D.odd.items.length:0 };
+}
+
+function tabInsight(tab){
+  var p=D.program, cats=D.byCategory||[], blds=D.byBuilding||[];
+  var byBudget=function(arr){ return arr.slice().sort(function(a,b){ return b.budget-a.budget; }); };
+
+  if (tab==='program'){
+    var variance=p.budget-p.eac, uncomm=p.budget-p.commit, pi=pendingInfo();
+    var topCat=byBudget(cats)[0];
+    var actGtP=cats.filter(function(c){ return c.actual>c.commit+1; });
+    var read='The program holds '+money(p.budget)+' of current budget, '+pct(safePct(p.commit,p.budget))+' committed and '+pct(safePct(p.actual,p.budget))+' spent. EAC is '+money(p.eac)+', '+
+      (variance<-0.5 ? money(-variance)+' over budget' : 'in line with budget')+'.'+(topCat?' '+topCat.name+' is the largest category at '+money(topCat.budget)+'.':'');
+    var recs=[];
+    if (variance<-0.5) recs.push('Forecast is above budget by '+money(-variance)+'. Stand up a recovery plan on the driving categories and confirm the EAC reflects current trends.');
+    if (pi.pendTot>0) recs.push(money(pi.pendTot)+' of pending owner changes sits outside the budget across '+pi.pendCnt+' open changes. Price and disposition them and confirm contingency covers the exposure.');
+    if (p.budget && uncomm/p.budget>0.4) recs.push(pct(uncomm/p.budget)+' of budget ('+money(uncomm)+') is uncommitted. Accelerate buyout of the largest packages to lock pricing.');
+    if (actGtP.length) recs.push(actGtP.length+' categor'+(actGtP.length>1?'ies show':'y shows')+' actuals booked ahead of commitments. Reconcile the commitment register so committed and EAC figures stay reliable.');
+    if (!recs.length) recs.push('Cost position is stable. Keep committed percent and EAC current as buyout proceeds.');
+    return { read:read, recs:recs };
+  }
+
+  if (tab==='buildings'){
+    var sb=byBudget(blds), top=sb[0]||{name:'',budget:0,commit:0};
+    var least=blds.filter(function(b){ return b.budget>0; }).sort(function(a,b){ return (a.commit/a.budget)-(b.commit/b.budget); })[0];
+    var pbb=pendingByBuilding();
+    var pbbArr=Object.keys(pbb).map(function(k){ return {name:k, v:pbb[k]}; }).filter(function(x){ return x.v>0; }).sort(function(a,b){ return b.v-a.v; });
+    var bAct=blds.filter(function(b){ return b.actual>b.commit+1; }).sort(function(a,b){ return (b.actual-b.commit)-(a.actual-a.commit); })[0];
+    var read=D.buildings.length+' buildings. '+(top.name?top.name+' is the largest at '+money(top.budget)+' ('+pct(safePct(top.budget,p.budget))+' of program), '+pct(safePct(top.commit,top.budget))+' committed.':'');
+    var recs=[];
+    if (least && least.budget && (least.commit/least.budget)<0.5) recs.push('Buyout is furthest behind on '+least.name+' ('+pct(safePct(least.commit,least.budget))+' committed on '+money(least.budget)+'). Prioritize its packages to reduce pricing exposure.');
+    if (pbbArr.length>1) recs.push('Pending change is heaviest on '+pbbArr[0].name+' ('+money(pbbArr[0].v)+'). Focus change disposition there to clear the largest share of open exposure.');
+    if (bAct) recs.push(bAct.name+' shows actuals ('+money(bAct.actual)+') above commitments ('+money(bAct.commit)+'). Check for unposted commitments in that building.');
+    if (!recs.length) recs.push('Buyout is progressing evenly across buildings. Keep committed percent moving on the largest packages.');
+    return { read:read, recs:recs };
+  }
+
+  if (tab==='categories'){
+    var unbought=byBudget(cats.filter(function(c){ return c.budget>0 && (c.commit/c.budget)<0.03; }));
+    var actGt=cats.filter(function(c){ return c.actual>c.commit+1; }).sort(function(a,b){ return (b.actual-b.commit)-(a.actual-a.commit); });
+    var over=cats.map(function(c){ return {name:c.name, v:(c.eac||0)-(c.budget||0)}; }).filter(function(x){ return x.v>1; }).sort(function(a,b){ return b.v-a.v; });
+    var topCat=byBudget(cats)[0];
+    var read=cats.length+' cost categories.'+(topCat?' '+topCat.name+' leads at '+money(topCat.budget)+'.':'')+
+      (unbought.length?' '+unbought.length+' '+(unbought.length>1?'are':'is')+' under 3 percent committed.':'')+
+      (actGt.length?' '+actGt.length+' show actuals above commitments.':'');
+    var recs=[];
+    if (unbought.length){
+      recs.push(unbought[0].name+' is the largest unbought scope at '+money(unbought[0].budget)+'. Confirm its buyout timeline before market pricing moves.');
+      if (unbought.length>1) recs.push((unbought.length-1)+' other categor'+(unbought.length-1>1?'ies are':'y is')+' also under 3 percent committed. Sequence their buyout so pricing is locked in priority order.');
+    }
+    if (actGt.length) recs.push('Reconcile '+actGt[0].name+', where spend ('+money(actGt[0].actual)+') exceeds commitments ('+money(actGt[0].commit)+')'+(actGt.length>1?', one of '+actGt.length+' such categories':'')+'. Commitments are likely understated.');
+    if (over.length) recs.push('Forecast exceeds budget in '+over.length+' categor'+(over.length>1?'ies':'y')+', led by '+over[0].name+' ('+money(over[0].v)+'). Build a recovery plan for the driving categories.');
+    if (!recs.length) recs.push('Category budgets track commitments. Keep buyout progressing on the largest packages.');
+    return { read:read, recs:recs };
+  }
+
+  if (tab==='trades'){
+    var lines=(D.detail||[]).filter(function(r){ return !r.isRollup; });
+    if (!lines.length) return { read:'No Project Detail tab was found in this report, so line item analysis is unavailable.', recs:['Load a report that includes the Project Detail tab to see trade level buyout and variance signals.'] };
+    var sorted=byBudget(lines), top=sorted[0];
+    var totalB=lines.reduce(function(s,r){ return s+r.budget; },0);
+    var top5=sorted.slice(0,5).reduce(function(s,r){ return s+r.budget; },0);
+    var openArr=[], seenDesc={};
+    lines.filter(function(r){ return r.budget>0 && (r.budget-r.commit)>0; })
+      .sort(function(a,b){ return (b.budget-b.commit)-(a.budget-a.commit); })
+      .forEach(function(r){ if(!seenDesc[r.desc]){ seenDesc[r.desc]=1; openArr.push(r); } });
+    var varNeg=lines.filter(function(r){ return r.variance<-0.5; }).sort(function(a,b){ return a.variance-b.variance; })[0];
+    var read=lines.length+' trade and line items. The largest is '+top.desc+' at '+money(top.budget)+'. The top 5 lines are '+pct(safePct(top5,totalB))+' of line item budget.';
+    var recs=[];
+    if (openArr[0]) recs.push('The largest open buyout is '+openArr[0].desc+' with '+money(openArr[0].budget-openArr[0].commit)+' uncommitted. Prioritize its award to lock pricing.');
+    if (openArr[1]) recs.push('Next largest open buyout is '+openArr[1].desc+' with '+money(openArr[1].budget-openArr[1].commit)+' uncommitted.');
+    if (varNeg) recs.push('Review '+varNeg.desc+', which shows an unfavorable variance of '+money(varNeg.variance)+'.');
+    recs.push('The top 5 lines carry '+pct(safePct(top5,totalB))+' of line item budget, so cost control on those packages drives the program result.');
+    return { read:read, recs:recs };
+  }
+
+  if (tab==='ofci'){
+    var rows=D.ofci||[];
+    if (!rows.length) return { read:'No OFCI Breakout tab was found in this report, so equipment analysis is unavailable.', recs:['Load a report that includes the OFCI Breakout tab to see equipment buyout and lead time signals.'] };
+    var sumB=rows.reduce(function(s,r){ return s+r.budget; },0), sumC=rows.reduce(function(s,r){ return s+r.commit; },0);
+    var baseSum=rows.filter(function(r){ return r.category==='Base Building'; }).reduce(function(s,r){ return s+r.budget; },0);
+    var fitSum=rows.filter(function(r){ return r.category==='Fitout'; }).reduce(function(s,r){ return s+r.budget; },0);
+    var fitCommit=rows.filter(function(r){ return r.category==='Fitout'; }).reduce(function(s,r){ return s+r.commit; },0);
+    var openMap={};
+    rows.forEach(function(r){ var open=r.budget-r.commit; if(r.budget>0 && open>0){ if(!openMap[r.equipment]) openMap[r.equipment]={equipment:r.equipment, open:0}; openMap[r.equipment].open+=open; } });
+    var openArr=Object.keys(openMap).map(function(k){ return openMap[k]; }).sort(function(a,b){ return b.open-a.open; });
+    var read=rows.length+' OFCI equipment lines totaling '+money(sumB)+' in budget, '+pct(safePct(sumC,sumB))+' committed. Base Building '+money(baseSum)+', Fitout '+money(fitSum)+'.';
+    var recs=[];
+    if (openArr[0]) recs.push('The largest uncommitted OFCI scope is '+openArr[0].equipment+' ('+money(openArr[0].open)+' open across the campus). Confirm its procurement and lead time so it does not gate the schedule.');
+    if (openArr[1]) recs.push('Next is '+openArr[1].equipment+' ('+money(openArr[1].open)+' open). Confirm its award and delivery date.');
+    if (fitSum>0 && (fitCommit/fitSum)<0.5) recs.push('Fitout OFCI is only '+pct(safePct(fitCommit,fitSum))+' committed on '+money(fitSum)+'. Track its buyout closely, since fitout equipment often carries long lead times.');
+    if (!recs.length) recs.push('OFCI is well committed. Keep tracking delivery and lead time against the schedule for the remaining open items.');
+    return { read:read, recs:recs };
+  }
+
+  if (tab==='odd'){
+    if (!D.odd) return { read:'No ODD tab was found in this report, so change analysis is unavailable.', recs:['Load a report that includes the ODD tab to see change exposure and allowance signals.'] };
+    var pi=pendingInfo();
+    var pbb2=pendingByBuilding();
+    var pbbA=Object.keys(pbb2).map(function(k){ return {name:k, v:pbb2[k]}; }).filter(function(x){ return x.v>0; }).sort(function(a,b){ return b.v-a.v; });
+    var read=pi.nItems+' owner directed changes. '+pi.pendCnt+' pending totaling '+money(pi.pendTot)+' '+(pi.pendCnt===1?'sits':'sit')+' outside budget'+
+      (pi.apprCnt?', '+pi.apprCnt+' approved at '+money(pi.apprTot):'')+'. Allowance '+money(pi.allowTot)+', '+money(pi.remainTot)+' remaining'+(pi.allowTot?' ('+pct(pi.remainTot/pi.allowTot)+')':'')+'.';
+    var recs=[];
+    if (pi.remainTot<0) recs.push('The tenant change allowance is exceeded by '+money(-pi.remainTot)+'. Open commercial recovery or a lease change order for the overage.');
+    else if (pi.allowTot && pi.remainTot<0.15*pi.allowTot) recs.push('Only '+money(pi.remainTot)+' of the '+money(pi.allowTot)+' allowance remains. Tighten change intake before further approvals draw on owner funds.');
+    if (pi.pendTot>0) recs.push('Disposition the '+pi.pendCnt+' pending changes ('+money(pi.pendTot)+') so exposure is not carried outside the budget.');
+    if (pbbA.length>1) recs.push('Pending change is concentrated in '+pbbA[0].name+' ('+money(pbbA[0].v)+'). Resolve those first to clear the largest single share.');
+    if (!recs.length) recs.push('Change activity is under control against the allowance. Keep dispositioning changes promptly.');
+    return { read:read, recs:recs };
+  }
+
+  return { read:'', recs:[] };
+}
+
+function summaryBand(tab){
+  var ins=tabInsight(tab);
+  if (!ins.read && (!ins.recs || !ins.recs.length)) return document.createElement('div');
+  var recsHtml = (ins.recs && ins.recs.length)
+    ? '<div class="sb-recs"><b>Recommendation'+(ins.recs.length>1?'s':'')+'</b><ul>'+
+        ins.recs.map(function(r){ return '<li>'+esc(r)+'</li>'; }).join('')+'</ul></div>'
+    : '';
+  return el('<div class="sumband">'+
+    '<div class="eye">Summary</div>'+
+    '<p>'+esc(ins.read)+'</p>'+
+    recsHtml+
+  '</div>');
+}
+
+var TABS = [
+  {id:'program', label:'Program', sub:'Budget \u00b7 commitments \u00b7 actuals \u00b7 EAC', fn:viewProgram},
+  {id:'risk', label:'Risk & Actions', sub:'generated recommendations', fn:viewRisk},
+  {id:'buildings', label:'Buildings', sub:'{n} buildings \u00b7 buyout position', fn:viewBuildings},
+  {id:'categories', label:'Categories', sub:'Category by building matrix', fn:viewCategories},
+  {id:'trades', label:'Trade detail', sub:'{n} line items \u00b7 searchable', fn:viewTrades},
+  {id:'ofci', label:'OFCI', sub:'{n} equipment lines \u00b7 suppliers', fn:viewOFCI},
+  {id:'odd', label:'Change log', sub:'{n} ODDs \u00b7 allowance status', fn:viewODD}
+];
+function renderTabs(){
+  var counts = {program:D.categories.length, buildings:D.buildings.length, categories:D.categories.length,
+                trades:D.detail.length, ofci:D.ofci.length, odd:D.odd?D.odd.items.length:0};
+  var nav = document.getElementById('tabs');
+  nav.innerHTML='';
+  TABS.forEach(function(t){
+    var b = el('<button class="tab" role="tab" aria-selected="'+(TAB===t.id)+'"><b>'+t.label+'</b><em>'+t.sub.replace('{n}', counts[t.id])+'</em></button>');
+    b.addEventListener('click', function(){ TAB=t.id; render(); });
+    nav.appendChild(b);
+  });
+}
+function mastValues(){
+  var p=D.program;
+  var pend = D.odd ? D.odd.items.filter(function(i){return /pending/i.test(i.status);}).reduce(function(s,i){return s+i.total;},0) : 0;
+  document.getElementById('mBudget').textContent = money(p.budget);
+  document.getElementById('mCommit').textContent = money(p.commit);
+  document.getElementById('mComplete').textContent = pct(safePct(p.actual,p.budget));
+  document.getElementById('mExposure').textContent = money(pend);
+  var crumbs = document.getElementById('crumbs');
+  var items = [{k:'Program', v:'MI Campus'}, {k:'Report', v: D.period ? 'Through '+D.period : 'Current'},
+               {k:'Buildings', v:String(D.buildings.length)}, {k:'View', v: TABS.filter(function(t){return t.id===TAB;})[0].label, active:true}];
+  if (TAB==='buildings') items[3] = {k:'Building', v:BLDG, active:true};
+  crumbs.innerHTML = items.map(function(it,i){
+    return (i? '<span class="sep">&rsaquo;</span>':'') +
+      '<div class="crumb'+(it.active?' active':'')+'"><span class="ck">'+esc(it.k)+'</span><span class="cv">'+esc(it.v)+'</span></div>';
+  }).join('');
+}
+function footer(){
+  return el('<div class="foot">'+
+    '<span class="badge">&#9670; Figures read live from the uploaded workbook. Pending ODDs are not carried in the current budget and sit outside the EAC shown here.</span>'+
+    '<span>Source: '+esc(document.getElementById('fileName').textContent)+(D.period?' &middot; costs through '+esc(D.period):'')+'</span>'+
+    '<span class="tagline">Stelic Project Controls</span></div>');
+}
+function render(){
+  killCharts();
+  kpis();
+  mastValues();
+  renderTabs();
+  var view = document.getElementById('view');
+  view.innerHTML='';
+  if (TAB!=='risk') view.appendChild(summaryBand(TAB));
+  view.appendChild(TABS.filter(function(t){return t.id===TAB;})[0].fn());
+  view.appendChild(footer());
+}
+
+/* ---------------- report library ---------------- */
+/* Every loaded report is stored as { id, name, period, loadedAt, data }.
+   data is the plain object returned by parseWorkbook (arrays / numbers / strings only),
+   so the whole library round-trips through JSON with no loss. */
+
+function newId(){ return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function repKey(name, period){ return norm(name).toLowerCase() + '||' + norm(period).toLowerCase(); }
+function repLabel(rep){ return rep.name + (rep.period ? '  \u00b7  through ' + rep.period : ''); }
+function baseName(fn){ return String(fn||'report').replace(/\.[^.]+$/,''); }
+
+function libSave(){
+  try { localStorage.setItem(LS_KEY, JSON.stringify(LIB)); }
+  catch(e){ /* storage full or blocked: library still lives in memory for this session */ }
+}
+function libLoad(){
+  try {
+    var raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    var obj = JSON.parse(raw);
+    if (obj && Array.isArray(obj.reports)){ LIB = obj; return LIB.reports.length > 0; }
+  } catch(e){}
+  return false;
+}
+
+/* ---------------- report library UI ---------------- */
+function refreshSelect(){
+  var sel = document.getElementById('reportSelect');
+  sel.innerHTML = LIB.reports.map(function(r){
+    return '<option value="'+esc(r.id)+'"'+(r.id===LIB.activeId?' selected':'')+'>'+esc(repLabel(r))+'</option>';
+  }).join('');
+  document.getElementById('removeReport').disabled = LIB.reports.length===0;
+}
+function paintChrome(rep){
+  document.getElementById('fileName').textContent = rep.name;
+  document.getElementById('fileMeta').textContent = rep.data.period || '';
+  document.getElementById('projTitle').textContent = 'Campus Cost Command';
+  document.getElementById('projSub').innerHTML =
+    'Owner cost report' + (rep.data.period ? ' &middot; costs through <b>'+esc(rep.data.period)+'</b>' : '') +
+    ' &middot; source <b>'+esc(rep.name)+'</b>' +
+    (LIB.reports.length>1 ? ' &middot; <b>'+LIB.reports.length+'</b> reports loaded' : '');
+}
+function showApp(){
+  chartDefaults();
+  document.getElementById('loader').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('mastMeta').style.display='flex';
+  document.getElementById('scope').style.display='flex';
+}
+function showLoader(){
+  killCharts();
+  document.getElementById('app').style.display='none';
+  document.getElementById('loader').style.display='block';
+  document.getElementById('mastMeta').style.display='none';
+  document.getElementById('scope').style.display='none';
+  document.getElementById('projSub').textContent = 'Owner cost report reader \u00b7 load a monthly ACR cost workbook';
+  document.getElementById('file').value='';
+}
+
+/* Point the dashboard at a report id and redraw. */
+function setActive(id, resetView){
+  var rep = LIB.reports.filter(function(r){ return r.id===id; })[0];
+  if (!rep) return;
+  LIB.activeId = id;
+  D = rep.data;
+  if (resetView){ BLDG = D.buildings[0]; TAB='program'; state={}; }
+  else if (D.buildings.indexOf(BLDG)===-1){ BLDG = D.buildings[0]; }
+  refreshSelect();
+  paintChrome(rep);
+  render();
+  window.scrollTo(0,0);
+  libSave();
+}
+
+/* Add a freshly parsed report, or replace the existing one with the same name + period. */
+function upsertReport(name, data){
+  var key = repKey(name, data.period), existing = null;
+  LIB.reports.forEach(function(r){ if (repKey(r.name, r.data.period)===key) existing = r; });
+  var id;
+  if (existing){ existing.data = data; existing.name = name; existing.period = data.period||''; existing.loadedAt = Date.now(); id = existing.id; }
+  else { id = newId(); LIB.reports.push({ id:id, name:name, period:data.period||'', loadedAt:Date.now(), data:data }); }
+  showApp();
+  setActive(id, true);
+}
+
+function removeActive(){
+  if (!LIB.activeId) return;
+  var i = LIB.reports.findIndex(function(r){ return r.id===LIB.activeId; });
+  if (i<0) return;
+  LIB.reports.splice(i,1);
+  if (!LIB.reports.length){ LIB.activeId=null; D=null; libSave(); showLoader(); return; }
+  var next = LIB.reports[Math.min(i, LIB.reports.length-1)];
+  setActive(next.id, true);
+}
+
+/* ---------------- JSON save / restore ---------------- */
+function downloadLib(){
+  if (!LIB.reports.length) return;
+  var blob = new Blob([JSON.stringify(LIB, null, 2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'MI_Cost_Library.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1500);
+}
+function ingestLibraryJson(text){
+  var obj = JSON.parse(text);
+  var incoming = Array.isArray(obj) ? obj : (obj && Array.isArray(obj.reports) ? obj.reports : null);
+  if (!incoming || !incoming.length) throw new Error('That JSON file holds no reports.');
+  var lastId = null;
+  incoming.forEach(function(r){
+    if (!r || !r.data || !Array.isArray(r.data.buildings)) return;   // skip anything that is not a parsed report
+    var name = r.name || 'report', period = r.data.period || r.period || '';
+    var key = repKey(name, period), existing=null;
+    LIB.reports.forEach(function(x){ if (repKey(x.name, x.data.period)===key) existing=x; });
+    if (existing){ existing.data=r.data; existing.name=name; existing.period=period; existing.loadedAt=r.loadedAt||Date.now(); lastId=existing.id; }
+    else { var id=r.id||newId(); LIB.reports.push({ id:id, name:name, period:period, loadedAt:r.loadedAt||Date.now(), data:r.data }); lastId=id; }
+  });
+  if (!lastId) throw new Error('No readable reports were found in that JSON file.');
+  showApp();
+  setActive(lastId, true);
+}
+
+/* ---------------- file loading ---------------- */
+function load(file){
+  var err = document.getElementById('err');
+  err.style.display='none';
+  var isJson = /\.json$/i.test(file.name);
+  var fr = new FileReader();
+  fr.onload = function(e){
+    try {
+      if (isJson){
+        ingestLibraryJson(e.target.result);
+      } else {
+        var wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', cellDates:false});
+        var data = parseWorkbook(wb);
+        upsertReport(file.name, data);
+      }
+    } catch(ex){
+      err.textContent = ex.message || 'That file could not be read.';
+      err.style.display='block';
+    }
+  };
+  fr.onerror = function(){ err.textContent='The file could not be read from disk.'; err.style.display='block'; };
+  if (isJson) fr.readAsText(file); else fr.readAsArrayBuffer(file);
+}
+
+var drop = document.getElementById('drop'), input = document.getElementById('file');
+drop.addEventListener('click', function(){ input.click(); });
+drop.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); input.click(); } });
+input.addEventListener('change', function(){ if (input.files[0]) load(input.files[0]); input.value=''; });
+['dragenter','dragover'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add('over'); }); });
+['dragleave','drop'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('over'); }); });
+drop.addEventListener('drop', function(e){ if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]); });
+window.addEventListener('dragover', function(e){ e.preventDefault(); });
+window.addEventListener('drop', function(e){ e.preventDefault(); });
+
+/* dropdown: switch the active report */
+document.getElementById('reportSelect').addEventListener('change', function(){ setActive(this.value, true); });
+/* add another report (xlsx) or restore a saved library (json) */
+document.getElementById('addFile').addEventListener('click', function(){ input.click(); });
+/* download the whole library as one JSON file */
+document.getElementById('saveJson').addEventListener('click', downloadLib);
+/* remove the report currently shown */
+document.getElementById('removeReport').addEventListener('click', removeActive);
+
+document.getElementById('unitSeg').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if (!b) return;
+  UNITS = b.dataset.u;
+  this.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', String(x===b)); });
+  if (D) render();
+});
+
+/* ---------------- boot ---------------- */
+(function boot(){
+  var emb = window.__EMBEDDED_REPORT__;
+  if (emb && emb.data){
+    /* Demo-only: start from a clean library and load just the embedded demo report,
+       ignoring and clearing anything cached in localStorage from a prior session so
+       no other report can appear in the dashboard. */
+    LIB = { reports:[], activeId:null };
+    try { localStorage.removeItem(LS_KEY); } catch(e){}
+    upsertReport(emb.name, emb.data);
+  } else if (libLoad() && LIB.reports.length){
+    showApp();
+    var startId = LIB.reports.filter(function(r){ return r.id===LIB.activeId; })[0] ? LIB.activeId : LIB.reports[0].id;
+    setActive(startId, true);
+  } else {
+    showLoader();
+  }
+})();
+</script>
+</body>
+</html>
